@@ -49,6 +49,53 @@
             opacity: 0.9;
         }
 
+        .filters {
+            background: #1f2937;
+            padding: 20px 30px;
+            border-bottom: 2px solid #374151;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .filter-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .filter-select {
+            padding: 8px 12px;
+            border: 2px solid #374151;
+            border-radius: 6px;
+            background: #111827;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 180px;
+        }
+
+        .filter-select:hover {
+            border-color: #3b82f6;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
         .metadata {
             background: #f3f4f6;
             padding: 15px 30px;
@@ -388,20 +435,51 @@
             const [selectedCard, setSelectedCard] = useState(null);
             const [searchTerm, setSearchTerm] = useState('');
             const [loading, setLoading] = useState(true);
+            const [selectedCharacter, setSelectedCharacter] = useState('regent');
+            const [selectedBucket, setSelectedBucket] = useState('singleplayer_a10');
+
+            const characters = [
+                { id: 'ironclad', name: 'Ironclad' },
+                { id: 'silent', name: 'Silent' },
+                { id: 'regent', name: 'Regent' },
+                { id: 'necrobinder', name: 'Necrobinder' },
+                { id: 'defect', name: 'Defect' }
+            ];
+
+            const buckets = [
+                { id: 'singleplayer_a10', name: 'Singleplayer A10' },
+                { id: 'singleplayer_a0-9', name: 'Singleplayer A0-9' },
+                { id: 'multiplayer_a10', name: 'Multiplayer A10' },
+                { id: 'multiplayer_a0-9', name: 'Multiplayer A0-9' },
+                { id: 'singleplayer_all', name: 'Singleplayer All' },
+                { id: 'multiplayer_all', name: 'Multiplayer All' },
+                { id: 'all', name: 'All Games' }
+            ];
 
             useEffect(() => {
-                // Load the JSON data
-                fetch('card_pickrates.json')
-                    .then(response => response.json())
+                // Load the JSON data based on selected character and bucket
+                setLoading(true);
+                setSelectedCard(null); // Reset selected card when changing filters
+
+                const filename = `data/${selectedCharacter}_${selectedBucket}.json`;
+
+                fetch(filename)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Failed to load ${filename}`);
+                        }
+                        return response.json();
+                    })
                     .then(jsonData => {
                         setData(jsonData);
                         setLoading(false);
                     })
                     .catch(error => {
                         console.error('Error loading data:', error);
+                        setData(null);
                         setLoading(false);
                     });
-            }, []);
+            }, [selectedCharacter, selectedBucket]);
 
             const sortedCards = useMemo(() => {
                 if (!data) return [];
@@ -468,6 +546,34 @@
                         <div className="subtitle">Card pick rates by floor</div>
                     </div>
 
+                    <div className="filters">
+                        <div className="filter-group">
+                            <label className="filter-label">Character</label>
+                            <select
+                                className="filter-select"
+                                value={selectedCharacter}
+                                onChange={(e) => setSelectedCharacter(e.target.value)}
+                            >
+                                {characters.map(char => (
+                                    <option key={char.id} value={char.id}>{char.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="filter-group">
+                            <label className="filter-label">Bucket</label>
+                            <select
+                                className="filter-select"
+                                value={selectedBucket}
+                                onChange={(e) => setSelectedBucket(e.target.value)}
+                            >
+                                {buckets.map(bucket => (
+                                    <option key={bucket.id} value={bucket.id}>{bucket.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
                     <div className="metadata">
                         <div className="metadata-item">
                             <span className="metadata-label">Character: </span>
@@ -478,11 +584,15 @@
                             <span className="metadata-value">{data.metadata.ascension_level}</span>
                         </div>
                         <div className="metadata-item">
+                            <span className="metadata-label">Mode: </span>
+                            <span className="metadata-value">{data.metadata.multiplayer_filter || 'all'}</span>
+                        </div>
+                        <div className="metadata-item">
                             <span className="metadata-label">Runs: </span>
                             <span className="metadata-value">{data.metadata.runs_processed}</span>
                         </div>
                         <div className="metadata-item">
-                            <span className="metadata-label">Bandwidth: </span>
+                            <span className="metadata-label">Kernel Smoothing: </span>
                             <span className="metadata-value">b={data.metadata.kernel_bandwidth}</span>
                         </div>
                     </div>
