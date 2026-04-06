@@ -356,7 +356,10 @@
                                 title: {
                                     display: true,
                                     text: 'Floor'
-                                }
+                                },
+                                type: 'linear',
+                                min: 2,
+                                max: 46
                             },
                             y: {
                                 title: {
@@ -461,8 +464,8 @@
             return (
                 <div className="container">
                     <div className="header">
-                        <h1>🃏 STS2 Card Pick Rate Analyzer</h1>
-                        <div className="subtitle">Interactive visualization of card pick rates by floor</div>
+                        <h1>STS2 Card Pick Rate Analyzer</h1>
+                        <div className="subtitle">Card pick rates by floor</div>
                     </div>
 
                     <div className="metadata">
@@ -559,9 +562,9 @@
                                                         <th>Floor</th>
                                                         <th>Offered</th>
                                                         <th>Picked</th>
-                                                        <th>Raw Rate</th>
-                                                        <th>Smoothed Rate</th>
-                                                        <th>Visual</th>
+                                                        <th>Pick Rate (Raw)</th>
+                                                        <th>Pick Rate (Smoothed)</th>
+                                                        <th>Pick Rate (Smoothed)</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>

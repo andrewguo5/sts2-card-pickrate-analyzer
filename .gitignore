@@ -10,7 +10,9 @@ build/
 
 # Data files (large, generated)
 card_pickrates.json
+card_pickrates.json.bak
 temp_run_pretty.json
+pickrate-viz/data/
 
 # Run history data (game save files - can be large)
 run_history_data/

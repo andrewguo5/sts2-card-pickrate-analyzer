@@ -21,20 +21,22 @@ import argparse
 
 
 class CardPickRateAnalyzer:
-    def __init__(self, character, ascension_level, game_version=None, kernel_bandwidth=2):
+    def __init__(self, character, ascension_level, game_version=None, kernel_bandwidth=2, multiplayer_filter=None):
         """
         Initialize the analyzer.
 
         Args:
             character: Character ID (e.g., "CHARACTER.REGENT")
-            ascension_level: Either an int (0-10) or "A10" for just A10, "A0-9" for A0-A9
+            ascension_level: Either an int (0-10) or "A10" for just A10, "A0-9" for A0-A9, "ALL" for all
             game_version: Optional game version filter (e.g., "v0.99.1")
             kernel_bandwidth: Bandwidth for kernel smoothing (default: 2)
+            multiplayer_filter: None (all), "singleplayer", or "multiplayer"
         """
         self.character = character
         self.ascension_level = ascension_level
         self.game_version = game_version
         self.kernel_bandwidth = kernel_bandwidth
+        self.multiplayer_filter = multiplayer_filter
 
         # Data structures to store pick rates
         # Format: card_id -> floor -> {"offered": count, "picked": count}
@@ -55,14 +57,22 @@ class CardPickRateAnalyzer:
             return [10]
         elif self.ascension_level == "A0-9":
             return list(range(0, 10))
+        elif self.ascension_level == "ALL":
+            return list(range(0, 11))
         else:
             raise ValueError(f"Invalid ascension level: {self.ascension_level}")
 
     def filter_run(self, run_data):
         """Check if a run matches our filters."""
-        # Check singleplayer
-        if len(run_data.get('players', [])) != 1:
-            return False
+        num_players = len(run_data.get('players', []))
+
+        # Check multiplayer filter
+        if self.multiplayer_filter == "singleplayer":
+            if num_players != 1:
+                return False
+        elif self.multiplayer_filter == "multiplayer":
+            if num_players <= 1:
+                return False
 
         # Check character
         player_char = run_data['players'][0].get('character', '')
@@ -254,6 +264,7 @@ class CardPickRateAnalyzer:
                 "ascension_level": str(self.ascension_level),
                 "game_version": self.game_version,
                 "kernel_bandwidth": self.kernel_bandwidth,
+                "multiplayer_filter": self.multiplayer_filter or "all",
                 "runs_processed": self.runs_processed
             },
             "cards": {}
@@ -295,11 +306,13 @@ def main():
     parser.add_argument('--character', default='CHARACTER.REGENT',
                        help='Character to analyze (default: CHARACTER.REGENT)')
     parser.add_argument('--ascension', default='A10',
-                       help='Ascension level: A10, A0-9, or specific number (default: A10)')
+                       help='Ascension level: A10, A0-9, ALL, or specific number (default: A10)')
     parser.add_argument('--version', default=None,
                        help='Game version filter (e.g., v0.99.1)')
     parser.add_argument('--bandwidth', type=int, default=2,
                        help='Kernel smoothing bandwidth (default: 2)')
+    parser.add_argument('--multiplayer', choices=['singleplayer', 'multiplayer', 'all'], default='singleplayer',
+                       help='Filter by player count: singleplayer, multiplayer, or all (default: singleplayer)')
     parser.add_argument('--output', default='card_pickrates.json',
                        help='Output JSON file (default: card_pickrates.json)')
     parser.add_argument('--min-offers', type=int, default=5,
@@ -307,11 +320,14 @@ def main():
 
     args = parser.parse_args()
 
+    multiplayer_filter = None if args.multiplayer == 'all' else args.multiplayer
+
     analyzer = CardPickRateAnalyzer(
         character=args.character,
         ascension_level=args.ascension,
         game_version=args.version,
-        kernel_bandwidth=args.bandwidth
+        kernel_bandwidth=args.bandwidth,
+        multiplayer_filter=multiplayer_filter
     )
 
     analyzer.run_analysis(export_file=args.output)
