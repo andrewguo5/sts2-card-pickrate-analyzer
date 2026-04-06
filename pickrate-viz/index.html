@@ -436,7 +436,8 @@
             const [searchTerm, setSearchTerm] = useState('');
             const [loading, setLoading] = useState(true);
             const [selectedCharacter, setSelectedCharacter] = useState('regent');
-            const [selectedBucket, setSelectedBucket] = useState('singleplayer_a10');
+            const [selectedMode, setSelectedMode] = useState('singleplayer');
+            const [selectedAscension, setSelectedAscension] = useState('a10');
 
             const characters = [
                 { id: 'ironclad', name: 'Ironclad' },
@@ -446,22 +447,37 @@
                 { id: 'defect', name: 'Defect' }
             ];
 
-            const buckets = [
-                { id: 'singleplayer_a10', name: 'Singleplayer A10' },
-                { id: 'singleplayer_a0-9', name: 'Singleplayer A0-9' },
-                { id: 'multiplayer_a10', name: 'Multiplayer A10' },
-                { id: 'multiplayer_a0-9', name: 'Multiplayer A0-9' },
-                { id: 'singleplayer_all', name: 'Singleplayer All' },
-                { id: 'multiplayer_all', name: 'Multiplayer All' },
+            const modes = [
+                { id: 'singleplayer', name: 'Singleplayer' },
+                { id: 'multiplayer', name: 'Multiplayer' },
                 { id: 'all', name: 'All Games' }
             ];
 
+            const ascensions = [
+                { id: 'a10', name: 'A10' },
+                { id: 'a0-9', name: 'A0-9' },
+                { id: 'all', name: 'All Ascensions' }
+            ];
+
             useEffect(() => {
-                // Load the JSON data based on selected character and bucket
+                // Load the JSON data based on selected character, mode, and ascension
                 setLoading(true);
                 setSelectedCard(null); // Reset selected card when changing filters
 
-                const filename = `data/${selectedCharacter}_${selectedBucket}.json`;
+                // Construct filename based on mode and ascension
+                let bucket;
+                if (selectedMode === 'all' && selectedAscension === 'all') {
+                    bucket = 'all';
+                } else if (selectedMode === 'all') {
+                    // All modes, specific ascension - not a valid bucket, default to all
+                    bucket = 'all';
+                } else if (selectedAscension === 'all') {
+                    bucket = `${selectedMode}_all`;
+                } else {
+                    bucket = `${selectedMode}_${selectedAscension}`;
+                }
+
+                const filename = `data/${selectedCharacter}_${bucket}.json`;
 
                 fetch(filename)
                     .then(response => {
@@ -479,7 +495,7 @@
                         setData(null);
                         setLoading(false);
                     });
-            }, [selectedCharacter, selectedBucket]);
+            }, [selectedCharacter, selectedMode, selectedAscension]);
 
             const sortedCards = useMemo(() => {
                 if (!data) return [];
@@ -561,14 +577,27 @@
                         </div>
 
                         <div className="filter-group">
-                            <label className="filter-label">Bucket</label>
+                            <label className="filter-label">Mode</label>
                             <select
                                 className="filter-select"
-                                value={selectedBucket}
-                                onChange={(e) => setSelectedBucket(e.target.value)}
+                                value={selectedMode}
+                                onChange={(e) => setSelectedMode(e.target.value)}
                             >
-                                {buckets.map(bucket => (
-                                    <option key={bucket.id} value={bucket.id}>{bucket.name}</option>
+                                {modes.map(mode => (
+                                    <option key={mode.id} value={mode.id}>{mode.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="filter-group">
+                            <label className="filter-label">Ascension</label>
+                            <select
+                                className="filter-select"
+                                value={selectedAscension}
+                                onChange={(e) => setSelectedAscension(e.target.value)}
+                            >
+                                {ascensions.map(asc => (
+                                    <option key={asc.id} value={asc.id}>{asc.name}</option>
                                 ))}
                             </select>
                         </div>
