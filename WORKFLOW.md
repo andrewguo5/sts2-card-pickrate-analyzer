@@ -1,280 +1,132 @@
-# Complete Workflow Guide
+# Workflow Guide
 
-This guide walks you through the complete process from game data to interactive visualization.
-
-## Quick Start
+## User Workflow (Uploading Runs)
 
 ```bash
-# 1. Sync run data from the game
-./sync_runs.sh
+# 1. Install dependencies
+pip install requests
 
-# 2. Generate pick rate analysis
-python3 card_pickrate_analysis.py --character CHARACTER.REGENT --ascension A10
+# 2. Upload runs to server
+python3 sts2_uploader.py --server https://your-app.railway.app --access-code YOUR_CODE
 
-# 3. Start the web visualization
-./start_viz.sh
-
-# 4. Open your browser to: http://localhost:8000
+# 3. View stats
+# Visit the web interface at your server URL
 ```
 
-That's it! You now have an interactive card pick rate analyzer.
+The uploader automatically:
+- Finds run files on your system
+- Detects your Steam ID
+- Only uploads runs that don't already exist
+- Shows progress
 
----
+## Admin Workflow (Managing Server)
 
-## Detailed Workflow
-
-### Step 1: Sync Run History Data
-
-After playing games, copy the latest run files from the game's save directory:
-
+### Initial Setup
 ```bash
-./sync_runs.sh
+# Deploy to Railway (see RAILWAY_CHECKLIST.md)
+# Set environment variables
+# Initialize database and create admin user
 ```
 
-This script copies `.run` files from:
-- `~/Library/Application Support/SlayTheSpire2/steam/{STEAM_ID}/profile*/saves/history/`
-
-To:
-- `run_history_data/profile*/`
-
-### Step 2: Generate Pick Rate Analysis
-
-Run the analysis script with your desired parameters:
-
+### Computing Analytics
 ```bash
-python3 card_pickrate_analysis.py \
-    --character CHARACTER.REGENT \
-    --ascension A10 \
-    --bandwidth 2 \
-    --output card_pickrates.json
+# After users upload runs, compute analytics:
+python3 test_api.py compute admin YOUR_ADMIN_PASSWORD --user-id null
+
+# Or for specific user:
+python3 test_api.py compute admin YOUR_ADMIN_PASSWORD --user-id 2
 ```
 
-**Parameters:**
-- `--character`: Which character to analyze
-  - `CHARACTER.REGENT`
-  - `CHARACTER.IRONCLAD`
-  - `CHARACTER.SILENT`
-  - `CHARACTER.NECROBINDER`
-  - `CHARACTER.DEFECT`
-
-- `--ascension`: Which ascension levels to include
-  - `A10` - Only Ascension 10
-  - `A0-9` - Ascensions 0 through 9
-  - `0`, `1`, `2`, ... - Specific ascension level
-
-- `--bandwidth`: Kernel smoothing parameter (default: 2)
-  - Lower = less smoothing (more noisy)
-  - Higher = more smoothing (less noisy)
-  - Recommended: 2
-
-- `--version`: Optional game version filter
-  - `v0.99.1`
-  - `v0.102.0`
-  - etc.
-
-- `--output`: Output JSON file (default: card_pickrates.json)
-
-The script will:
-1. Filter runs matching your criteria
-2. Extract all card choices from map_point_history
-3. Calculate raw pick rates per floor
-4. Apply kernel smoothing
-5. Export results to JSON
-
-### Step 3: Launch Web Visualization
-
+### Viewing Stats
 ```bash
-./start_viz.sh
+# Global stats (no auth required)
+curl https://your-app.railway.app/api/analytics/global-stats?character=regent&mode=singleplayer&ascension=a10
+
+# API docs
+https://your-app.railway.app/docs
 ```
 
-Or manually:
+## Local Development Workflow
+
 ```bash
+# 1. Start PostgreSQL
+brew services start postgresql@15
+
+# 2. Create database
+createdb sts2_analytics
+
+# 3. Configure backend
+cd backend
+cp .env.example .env
+# Edit .env
+
+# 4. Initialize database
+python3 init_db.py
+python3 create_admin.py --username admin --password admin123
+
+# 5. Start backend
+python3 main.py  # Runs on port 8001
+
+# 6. (In another terminal) Test upload
+cd ..
+python3 sts2_uploader.py --access-code spire_upload_2026_secret
+
+# 7. Compute analytics
+python3 backend/test_api.py compute admin admin123
+
+# 8. Serve frontend
 cd pickrate-viz
 python3 -m http.server 8000
+# Visit http://localhost:8000
 ```
 
-Then open: **http://localhost:8000**
+## Data Flow
 
-### Step 4: Interact with the Visualization
-
-**Features:**
-- **Search**: Type in the search box to filter cards
-- **Select Card**: Click any card in the left sidebar
-- **View Chart**: See smoothed (blue area) and raw (purple dashed) pick rates
-- **Hover**: Mouse over chart for exact values
-- **Data Table**: Scroll down for floor-by-floor breakdown
-
----
-
-## Common Use Cases
-
-### Analyze Different Characters
-
-```bash
-# Ironclad A10
-python3 card_pickrate_analysis.py --character CHARACTER.IRONCLAD --ascension A10
-
-# Necrobinder A0-9
-python3 card_pickrate_analysis.py --character CHARACTER.NECROBINDER --ascension A0-9
+```
+1. User plays STS2 → Run saved to ~/.../history/*.run
+2. User runs sts2_uploader.py
+3. Uploader checks which runs are new
+4. Uploader uploads new runs → PostgreSQL
+5. Admin triggers analytics computation
+6. Analytics stored in analytics_cache table
+7. Users view stats on web interface
 ```
 
-### Compare Different Smoothing
+## File Locations
 
-```bash
-# Less smoothing (more detail, more noise)
-python3 card_pickrate_analysis.py --character CHARACTER.REGENT --ascension A10 --bandwidth 1
-
-# More smoothing (less detail, less noise)
-python3 card_pickrate_analysis.py --character CHARACTER.REGENT --ascension A10 --bandwidth 4
+**Game saves (macOS):**
+```
+~/Library/Application Support/SlayTheSpire2/steam/{STEAM_ID}/profile*/saves/history/*.run
 ```
 
-### Filter by Game Version
+**Game saves (Windows):**
+```
+%APPDATA%/SlayTheSpire2/steam/{STEAM_ID}/profile*/saves/history/*.run
+```
 
+**Local run data (for development):**
+```
+run_history_data/  # Gitignored
+```
+
+## Common Tasks
+
+### Generate all analytics
 ```bash
-# Only latest version
+# All characters × all buckets (35 combinations)
+python3 generate_all_analyses.py
+```
+
+### Test specific character
+```bash
 python3 card_pickrate_analysis.py \
-    --character CHARACTER.REGENT \
-    --ascension A10 \
-    --version v0.102.0
+  --character CHARACTER.REGENT \
+  --ascension A10 \
+  --multiplayer singleplayer \
+  --output test_output.json
 ```
 
----
-
-## Other Useful Scripts
-
-### Basic Statistics
-
+### View terminal visualization
 ```bash
-# Get overview of all runs
-python3 analyze_runs.py
+python3 visualize_pickrates.py --card BEGONE
 ```
-
-Shows:
-- Character distribution
-- Ascension levels
-- Game versions
-- Win/loss rates
-- Character+Ascension win rates
-
-### Examine Run Structure
-
-```bash
-# Look at detailed structure of run files
-python3 examine_run_structure.py
-```
-
-Shows:
-- Top-level fields
-- Key bucketing fields
-- Player info
-- Map point history
-
-### Text-Based Visualization
-
-```bash
-# View pick rates in terminal
-python3 visualize_pickrates.py
-
-# View specific card
-python3 visualize_pickrates.py --card GLOW
-
-# Show top N cards
-python3 visualize_pickrates.py --top 20
-```
-
-### Optimize Bandwidth
-
-```bash
-# Evaluate different bandwidth values
-python3 optimize_bandwidth.py --min-b 0 --max-b 8
-
-# Compare bandwidth for specific card
-python3 optimize_bandwidth.py --card BEGONE
-```
-
----
-
-## File Organization
-
-```
-Spire.mbgg/
-├── run_history_data/           # Run files from game
-│   ├── profile1/
-│   └── profile2/
-│
-├── pickrate-viz/               # Web visualization
-│   ├── index.html              # React app
-│   ├── card_pickrates.json     # Generated data
-│   └── README.md
-│
-├── card_pickrate_analysis.py   # Main analysis script
-├── visualize_pickrates.py      # Terminal visualization
-├── analyze_runs.py             # Basic statistics
-├── examine_run_structure.py    # Data structure explorer
-├── optimize_bandwidth.py       # Bandwidth optimization
-│
-├── sync_runs.sh                # Sync from game
-├── start_viz.sh                # Launch web server
-│
-├── README.md                   # Project overview
-├── WORKFLOW.md                 # This file
-└── bandwidth_recommendations.md # Bandwidth selection guide
-```
-
----
-
-## Tips & Tricks
-
-### Refreshing Data
-
-After playing new games:
-1. Run `./sync_runs.sh` to get new run files
-2. Re-run `card_pickrate_analysis.py` to regenerate JSON
-3. Refresh your browser (Cmd+R or Ctrl+R)
-
-### Multiple Analyses
-
-You can create multiple JSON files for different analyses:
-
-```bash
-# Regent A10
-python3 card_pickrate_analysis.py \
-    --character CHARACTER.REGENT \
-    --ascension A10 \
-    --output regent_a10.json
-
-# Ironclad A0-9
-python3 card_pickrate_analysis.py \
-    --character CHARACTER.IRONCLAD \
-    --ascension A0-9 \
-    --output ironclad_a09.json
-```
-
-Then swap the JSON file in `pickrate-viz/` directory.
-
-### Low Sample Size
-
-If you see warnings about low sample size:
-- Play more games!
-- Use broader filters (e.g., A0-9 instead of A10)
-- Increase bandwidth for more smoothing
-- Focus on commonly offered cards
-
-### Performance
-
-The web app loads the entire JSON in memory. If you have thousands of runs:
-- Consider filtering to recent game versions only
-- Split analysis by character
-- The app should still be fast with 100+ runs per character
-
----
-
-## Next Steps
-
-Ideas for future enhancements:
-- Win rate correlation (cards that lead to wins)
-- Deck archetypes (cluster common card combinations)
-- Relic analysis (pick rates for relics)
-- Floor-by-floor deck evolution
-- Comparison between ascension levels
-- Multi-character comparison view
