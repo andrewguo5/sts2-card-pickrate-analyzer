@@ -1,0 +1,303 @@
+"""
+Analytics computation and retrieval routes.
+"""
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy.orm import Session
+
+from auth import get_current_user, get_current_admin_user
+from database import get_db
+from models import User, Run, AnalyticsCache
+from schemas import AnalyticsComputeRequest, AnalyticsComputeResponse, AnalyticsResponse
+from analytics_engine import compute_pickrates
+
+router = APIRouter(prefix="/api/analytics", tags=["analytics"])
+
+
+# Character mapping
+CHARACTERS = [
+    "CHARACTER.IRONCLAD",
+    "CHARACTER.SILENT",
+    "CHARACTER.REGENT",
+    "CHARACTER.NECROBINDER",
+    "CHARACTER.DEFECT"
+]
+
+# Bucket definitions
+BUCKETS = [
+    {"mode": "singleplayer", "ascension": "a10"},
+    {"mode": "singleplayer", "ascension": "a0-9"},
+    {"mode": "multiplayer", "ascension": "a10"},
+    {"mode": "multiplayer", "ascension": "a0-9"},
+    {"mode": "singleplayer", "ascension": "all"},
+    {"mode": "multiplayer", "ascension": "all"},
+    {"mode": "all", "ascension": "all"},
+]
+
+
+def parse_ascension_filter(ascension: str):
+    """Parse ascension filter into list of ascension levels."""
+    if ascension == "a10":
+        return [10]
+    elif ascension == "a0-9":
+        return list(range(0, 10))
+    elif ascension == "all":
+        return list(range(0, 11))
+    else:
+        raise ValueError(f"Invalid ascension filter: {ascension}")
+
+
+def parse_mode_filter(mode: str):
+    """Parse mode filter into player count criteria."""
+    if mode == "singleplayer":
+        return {"min": 1, "max": 1}
+    elif mode == "multiplayer":
+        return {"min": 2, "max": 99}
+    elif mode == "all":
+        return {"min": 1, "max": 99}
+    else:
+        raise ValueError(f"Invalid mode filter: {mode}")
+
+
+def filter_runs(db: Session, user_id: Optional[int], character: str, mode: str, ascension: str):
+    """
+    Filter runs based on criteria.
+
+    Args:
+        db: Database session
+        user_id: User ID (None for global stats)
+        character: Character filter (e.g., "CHARACTER.REGENT")
+        mode: Mode filter ("singleplayer", "multiplayer", "all")
+        ascension: Ascension filter ("a10", "a0-9", "all")
+
+    Returns:
+        List of run raw_data dictionaries
+    """
+    query = db.query(Run)
+
+    # User filter
+    if user_id is not None:
+        query = query.filter(Run.user_id == user_id)
+
+    # Character filter
+    query = query.filter(Run.character == character)
+
+    # Ascension filter
+    ascension_levels = parse_ascension_filter(ascension)
+    query = query.filter(Run.ascension.in_(ascension_levels))
+
+    # Mode filter (player count)
+    mode_criteria = parse_mode_filter(mode)
+    query = query.filter(
+        Run.num_players >= mode_criteria["min"],
+        Run.num_players <= mode_criteria["max"]
+    )
+
+    runs = query.all()
+    return [run.raw_data for run in runs]
+
+
+def compute_and_cache_analytics(
+    db: Session,
+    user_id: Optional[int],
+    character: str,
+    mode: str,
+    ascension: str
+) -> dict:
+    """
+    Compute analytics and cache the result.
+
+    Args:
+        db: Database session
+        user_id: User ID (None for global stats)
+        character: Character filter
+        mode: Mode filter
+        ascension: Ascension filter
+
+    Returns:
+        Analytics data dictionary
+    """
+    # Filter runs
+    runs = filter_runs(db, user_id, character, mode, ascension)
+
+    # Compute pick rates
+    pickrate_data = compute_pickrates(runs, bandwidth=2)
+
+    # Add metadata
+    metadata = {
+        "character": character,
+        "ascension_level": ascension.upper().replace("A0-9", "A0-9"),
+        "multiplayer_filter": mode,
+        "runs_processed": len(runs),
+        "kernel_bandwidth": 2
+    }
+
+    result = {
+        "metadata": metadata,
+        "cards": pickrate_data["cards"]
+    }
+
+    # Cache the result
+    # Delete old cache entry if exists
+    db.query(AnalyticsCache).filter(
+        AnalyticsCache.user_id == user_id,
+        AnalyticsCache.character == character,
+        AnalyticsCache.mode == mode,
+        AnalyticsCache.ascension == ascension
+    ).delete()
+
+    # Create new cache entry
+    cache_entry = AnalyticsCache(
+        user_id=user_id,
+        character=character,
+        mode=mode,
+        ascension=ascension,
+        runs_included=len(runs),
+        pickrate_data=result
+    )
+    db.add(cache_entry)
+    db.commit()
+
+    return result
+
+
+@router.post("/compute", response_model=AnalyticsComputeResponse)
+def compute_analytics(
+    request: AnalyticsComputeRequest,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Compute analytics for all character/mode/ascension combinations.
+    Admin only.
+
+    Args:
+        request: Contains optional user_id (None for global stats)
+    """
+    user_id = request.user_id
+
+    # Validate user_id if provided
+    if user_id is not None:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"User {user_id} not found"
+            )
+
+    # Compute all combinations
+    total_combinations = len(CHARACTERS) * len(BUCKETS)
+
+    for character in CHARACTERS:
+        for bucket in BUCKETS:
+            compute_and_cache_analytics(
+                db,
+                user_id,
+                character,
+                bucket["mode"],
+                bucket["ascension"]
+            )
+
+    return AnalyticsComputeResponse(
+        status="completed",
+        combinations=total_combinations,
+        estimated_time=f"{total_combinations * 2} seconds"
+    )
+
+
+@router.get("/my-stats", response_model=AnalyticsResponse)
+def get_my_stats(
+    character: str = Query(..., description="Character (e.g., 'regent', 'ironclad')"),
+    mode: str = Query(..., description="Mode: singleplayer, multiplayer, all"),
+    ascension: str = Query(..., description="Ascension: a10, a0-9, all"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get user's personal analytics.
+
+    Query parameters:
+        - character: Character short name (e.g., 'regent', 'ironclad')
+        - mode: 'singleplayer', 'multiplayer', or 'all'
+        - ascension: 'a10', 'a0-9', or 'all'
+    """
+    # Convert short character name to full ID
+    character_upper = character.upper()
+    full_character = f"CHARACTER.{character_upper}"
+
+    if full_character not in CHARACTERS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid character: {character}"
+        )
+
+    # Check cache first
+    cache_entry = db.query(AnalyticsCache).filter(
+        AnalyticsCache.user_id == current_user.id,
+        AnalyticsCache.character == full_character,
+        AnalyticsCache.mode == mode,
+        AnalyticsCache.ascension == ascension
+    ).first()
+
+    if cache_entry:
+        return cache_entry.pickrate_data
+
+    # Cache miss - compute on demand
+    result = compute_and_cache_analytics(
+        db,
+        current_user.id,
+        full_character,
+        mode,
+        ascension
+    )
+
+    return result
+
+
+@router.get("/global-stats", response_model=AnalyticsResponse)
+def get_global_stats(
+    character: str = Query(..., description="Character (e.g., 'regent', 'ironclad')"),
+    mode: str = Query(..., description="Mode: singleplayer, multiplayer, all"),
+    ascension: str = Query(..., description="Ascension: a10, a0-9, all"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get global analytics (averaged across all users).
+
+    Query parameters:
+        - character: Character short name (e.g., 'regent', 'ironclad')
+        - mode: 'singleplayer', 'multiplayer', or 'all'
+        - ascension: 'a10', 'a0-9', or 'all'
+    """
+    # Convert short character name to full ID
+    character_upper = character.upper()
+    full_character = f"CHARACTER.{character_upper}"
+
+    if full_character not in CHARACTERS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid character: {character}"
+        )
+
+    # Check cache first (user_id=None for global)
+    cache_entry = db.query(AnalyticsCache).filter(
+        AnalyticsCache.user_id.is_(None),
+        AnalyticsCache.character == full_character,
+        AnalyticsCache.mode == mode,
+        AnalyticsCache.ascension == ascension
+    ).first()
+
+    if cache_entry:
+        return cache_entry.pickrate_data
+
+    # Cache miss - compute on demand
+    result = compute_and_cache_analytics(
+        db,
+        None,  # None = global stats
+        full_character,
+        mode,
+        ascension
+    )
+
+    return result

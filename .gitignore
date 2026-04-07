@@ -30,3 +30,8 @@ ehthumbs.db
 *.swp
 *.swo
 *~
+
+# Backend
+backend/.env
+backend/__pycache__/
+backend/routers/__pycache__/

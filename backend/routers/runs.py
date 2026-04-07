@@ -1,0 +1,211 @@
+"""
+Run upload routes.
+"""
+import hashlib
+import json
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from auth import get_current_user, verify_access_code
+from database import get_db
+from models import User, Run
+from schemas import RunUpload, RunUploadResponse
+from typing import List, Optional
+from pydantic import BaseModel
+
+router = APIRouter(prefix="/api/runs", tags=["runs"])
+
+
+class CheckHashesRequest(BaseModel):
+    """Request to check which run hashes exist on server."""
+    hashes: List[str]
+
+
+class CheckHashesResponse(BaseModel):
+    """Response with list of hashes that are missing (not yet uploaded)."""
+    missing_hashes: List[str]
+    total_checked: int
+    already_uploaded: int
+
+
+def compute_run_hash(run_data: dict) -> str:
+    """Compute SHA256 hash of run data to detect duplicates."""
+    json_str = json.dumps(run_data, sort_keys=True)
+    return hashlib.sha256(json_str.encode()).hexdigest()
+
+
+def extract_run_metadata(run_data: dict) -> dict:
+    """
+    Extract key metadata from run data.
+
+    Returns:
+        dict with keys: character, ascension, num_players, game_version, victory
+    """
+    character = run_data.get('players', [{}])[0].get('character', 'UNKNOWN')
+    ascension = run_data.get('ascension', 0)
+    num_players = len(run_data.get('players', []))
+    game_version = run_data.get('build_id', None)
+    victory = run_data.get('victory', False)
+
+    return {
+        'character': character,
+        'ascension': ascension,
+        'num_players': num_players,
+        'game_version': game_version,
+        'victory': victory
+    }
+
+
+@router.post("/upload", response_model=RunUploadResponse, status_code=status.HTTP_201_CREATED)
+def upload_run(
+    upload_data: RunUpload,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Upload a single run file.
+
+    Detects duplicates using SHA256 hash and returns appropriate status.
+    """
+    run_data = upload_data.run_data
+
+    # Compute hash for duplicate detection
+    run_hash = compute_run_hash(run_data)
+
+    # Check if this run already exists
+    existing_run = db.query(Run).filter(Run.run_file_hash == run_hash).first()
+    if existing_run:
+        # Run already uploaded (possibly by this user or another user)
+        metadata = extract_run_metadata(run_data)
+        return RunUploadResponse(
+            id=existing_run.id,
+            status="duplicate",
+            duplicate=True,
+            character=metadata['character'],
+            ascension=metadata['ascension']
+        )
+
+    # Extract metadata
+    metadata = extract_run_metadata(run_data)
+
+    # Create new run record
+    new_run = Run(
+        user_id=current_user.id,
+        run_file_hash=run_hash,
+        character=metadata['character'],
+        ascension=metadata['ascension'],
+        num_players=metadata['num_players'],
+        game_version=metadata['game_version'],
+        victory=metadata['victory'],
+        raw_data=run_data
+    )
+
+    db.add(new_run)
+    db.commit()
+    db.refresh(new_run)
+
+    return RunUploadResponse(
+        id=new_run.id,
+        status="accepted",
+        duplicate=False,
+        character=new_run.character,
+        ascension=new_run.ascension
+    )
+
+
+# ============================================================================
+# NEW ACCESS-CODE BASED ENDPOINTS (for simplified upload workflow)
+# ============================================================================
+
+class SimpleRunUpload(BaseModel):
+    """Simplified run upload with Steam ID."""
+    steam_id: str
+    run_data: dict
+
+
+@router.post("/check-hashes", response_model=CheckHashesResponse)
+def check_hashes(
+    request: CheckHashesRequest,
+    access_code_valid: bool = Depends(verify_access_code),
+    db: Session = Depends(get_db)
+):
+    """
+    Check which run hashes are already uploaded to the server.
+
+    This allows the upload client to only upload runs that don't already exist,
+    saving bandwidth and time.
+
+    Requires X-Access-Code header.
+    """
+    existing_hashes = db.query(Run.run_file_hash).filter(
+        Run.run_file_hash.in_(request.hashes)
+    ).all()
+
+    existing_hash_set = {h[0] for h in existing_hashes}
+    missing_hashes = [h for h in request.hashes if h not in existing_hash_set]
+
+    return CheckHashesResponse(
+        missing_hashes=missing_hashes,
+        total_checked=len(request.hashes),
+        already_uploaded=len(existing_hash_set)
+    )
+
+
+@router.post("/simple-upload", response_model=RunUploadResponse, status_code=status.HTTP_201_CREATED)
+def simple_upload(
+    upload_data: SimpleRunUpload,
+    access_code_valid: bool = Depends(verify_access_code),
+    db: Session = Depends(get_db)
+):
+    """
+    Simplified upload endpoint using access code instead of JWT.
+
+    Associates runs with Steam ID instead of user account.
+    Requires X-Access-Code header.
+    """
+    run_data = upload_data.run_data
+    steam_id = upload_data.steam_id
+
+    # Compute hash for duplicate detection
+    run_hash = compute_run_hash(run_data)
+
+    # Check if this run already exists
+    existing_run = db.query(Run).filter(Run.run_file_hash == run_hash).first()
+    if existing_run:
+        metadata = extract_run_metadata(run_data)
+        return RunUploadResponse(
+            id=existing_run.id,
+            status="duplicate",
+            duplicate=True,
+            character=metadata['character'],
+            ascension=metadata['ascension']
+        )
+
+    # Extract metadata
+    metadata = extract_run_metadata(run_data)
+
+    # Store run with Steam ID
+    new_run = Run(
+        user_id=None,  # Not using user accounts for simple upload
+        steam_id=steam_id,  # Store Steam ID for user identification
+        run_file_hash=run_hash,
+        character=metadata['character'],
+        ascension=metadata['ascension'],
+        num_players=metadata['num_players'],
+        game_version=metadata['game_version'],
+        victory=metadata['victory'],
+        raw_data=run_data
+    )
+
+    db.add(new_run)
+    db.commit()
+    db.refresh(new_run)
+
+    return RunUploadResponse(
+        id=new_run.id,
+        status="accepted",
+        duplicate=False,
+        character=new_run.character,
+        ascension=new_run.ascension
+    )
