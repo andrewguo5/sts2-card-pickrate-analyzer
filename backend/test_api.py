@@ -14,10 +14,11 @@ Usage:
 import sys
 import json
 import glob
+import os
 import requests
 import argparse
 
-BASE_URL = "http://localhost:8001"
+BASE_URL = os.getenv("API_URL", "http://localhost:8001")
 
 
 def register(username, password):
@@ -101,6 +102,12 @@ def compute_analytics(username, password, user_id=None):
         "username": username,
         "password": password
     })
+
+    if response.status_code != 200:
+        print(f"✗ Login failed: {response.status_code}")
+        print(f"Response: {response.text}")
+        return
+
     token = response.json()['access_token']
 
     headers = {'Authorization': f'Bearer {token}'}

@@ -1,6 +1,6 @@
-# STS2 Run Uploader
+# mbgg-sts2-uploader
 
-Simple command-line tool to upload your Slay the Spire 2 run history to the analytics server.
+Simple command-line tool to upload your Slay the Spire 2 run history to the mbgg analytics server.
 
 ## Features
 
@@ -11,39 +11,38 @@ Simple command-line tool to upload your Slay the Spire 2 run history to the anal
 ✅ **Secure** - Uses access code authentication
 ✅ **Fast** - Checks hashes before uploading to save bandwidth
 
-## Requirements
-
-- Python 3.7+
-- `requests` library
+## Installation
 
 ```bash
-pip install requests
+pip install mbgg-sts2-uploader
 ```
+
+That's it! No other dependencies needed.
 
 ## Usage
 
 ### Basic Upload (prompts for access code)
 
 ```bash
-python3 sts2_uploader.py
+mbgg-sts2-upload --server https://mbgg-api.up.railway.app
 ```
 
 ### Upload with access code
 
 ```bash
-python3 sts2_uploader.py --access-code YOUR_SECRET_CODE
-```
-
-### Upload to remote server
-
-```bash
-python3 sts2_uploader.py --server https://sts2-analytics.example.com --access-code YOUR_SECRET_CODE
+mbgg-sts2-upload --server https://mbgg-api.up.railway.app --access-code YOUR_SECRET_CODE
 ```
 
 ### Dry run (see what would be uploaded)
 
 ```bash
-python3 sts2_uploader.py --dry-run
+mbgg-sts2-upload --dry-run
+```
+
+### All options
+
+```bash
+mbgg-sts2-upload --help
 ```
 
 ## How It Works
