@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     # Upload access code
     upload_access_code: str = "CHANGE_ME_IN_PRODUCTION"
 
+    # Steam Web API (optional - for username resolution)
+    steam_api_key: str = ""
+
     class Config:
         env_file = ".env"
         case_sensitive = False

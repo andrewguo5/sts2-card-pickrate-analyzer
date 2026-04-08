@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
 from database import engine, Base
-from routers import auth, runs, analytics
+from routers import auth, runs, analytics, steam
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -31,6 +31,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(runs.router)
 app.include_router(analytics.router)
+app.include_router(steam.router)
 
 
 @app.get("/")

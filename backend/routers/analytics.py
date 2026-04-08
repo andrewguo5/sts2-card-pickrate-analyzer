@@ -301,3 +301,119 @@ def get_global_stats(
     )
 
     return result
+
+
+@router.get("/users")
+def get_users_list(db: Session = Depends(get_db)):
+    """
+    Get list of all Steam IDs that have uploaded runs.
+
+    Returns:
+        List of objects with steam_id and run_count, sorted by run_count descending
+    """
+    from sqlalchemy import func
+
+    # Query for unique steam_ids with run counts
+    results = db.query(
+        Run.steam_id,
+        func.count(Run.id).label('run_count')
+    ).filter(
+        Run.steam_id.isnot(None)
+    ).group_by(
+        Run.steam_id
+    ).order_by(
+        func.count(Run.id).desc()
+    ).all()
+
+    return [
+        {"steam_id": row.steam_id, "run_count": row.run_count}
+        for row in results
+    ]
+
+
+@router.get("/user-stats", response_model=AnalyticsResponse)
+def get_user_stats(
+    steam_id: str = Query(..., description="Steam ID"),
+    character: str = Query(..., description="Character (e.g., 'regent', 'ironclad')"),
+    mode: str = Query(..., description="Mode: singleplayer, multiplayer, all"),
+    ascension: str = Query(..., description="Ascension: a10, a0-9, all"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get analytics for a specific user's Steam ID.
+
+    Query parameters:
+        - steam_id: 64-bit Steam ID
+        - character: Character short name (e.g., 'regent', 'ironclad')
+        - mode: 'singleplayer', 'multiplayer', or 'all'
+        - ascension: 'a10', 'a0-9', or 'all'
+    """
+    # Convert short character name to full ID
+    character_upper = character.upper()
+    full_character = f"CHARACTER.{character_upper}"
+
+    if full_character not in CHARACTERS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid character: {character}"
+        )
+
+    # Filter runs by steam_id
+    runs = filter_runs_by_steam_id(db, steam_id, full_character, mode, ascension)
+
+    # Compute pick rates
+    pickrate_data = compute_pickrates(runs, bandwidth=2)
+
+    # Add metadata
+    metadata = {
+        "character": full_character,
+        "ascension_level": ascension.upper().replace("A0-9", "A0-9"),
+        "multiplayer_filter": mode,
+        "runs_processed": len(runs),
+        "kernel_bandwidth": 2,
+        "steam_id": steam_id
+    }
+
+    result = {
+        "metadata": metadata,
+        "cards": pickrate_data["cards"]
+    }
+
+    return result
+
+
+def filter_runs_by_steam_id(db: Session, steam_id: str, character: str, mode: str, ascension: str):
+    """
+    Filter runs by steam_id instead of user_id.
+
+    Args:
+        db: Database session
+        steam_id: Steam ID to filter by
+        character: Character filter
+        mode: Mode filter
+        ascension: Ascension filter
+
+    Returns:
+        List of run raw_data dictionaries
+    """
+    query = db.query(Run)
+
+    # Steam ID filter
+    query = query.filter(Run.steam_id == steam_id)
+
+    # Character filter
+    query = query.filter(Run.character == character)
+
+    # Ascension filter
+    ascension_levels = parse_ascension_filter(ascension)
+    query = query.filter(Run.ascension.in_(ascension_levels))
+
+    # Mode filter (player count)
+    mode_criteria = parse_mode_filter(mode)
+    query = query.filter(
+        Run.num_players >= mode_criteria["min"],
+        Run.num_players <= mode_criteria["max"]
+    )
+
+    runs = query.all()
+    return [run.raw_data for run in runs]
