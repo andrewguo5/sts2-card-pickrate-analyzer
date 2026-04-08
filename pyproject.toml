@@ -10,7 +10,7 @@ readme = "UPLOADER_README.md"
 requires-python = ">=3.8"
 license = "MIT"
 authors = [
-    {name = "mbgg", email = "your@email.com"}
+    {name = "Andrew Guo", email = "andrew.guo5@gmail.com"}
 ]
 keywords = ["slay-the-spire-2", "sts2", "analytics", "gaming"]
 classifiers = [
@@ -29,7 +29,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://mbgg.up.railway.app"
-Repository = "https://github.com/YOUR_USERNAME/YOUR_REPO"
+Repository = "https://github.com/andrewguo5/sts2-card-pickrate-analyzer"
 
 [project.scripts]
 mbgg-sts2-upload = "mbgg_sts2_uploader.cli:main"

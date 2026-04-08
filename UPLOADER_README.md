@@ -1,15 +1,15 @@
 # mbgg-sts2-uploader
 
-Simple command-line tool to upload your Slay the Spire 2 run history to the mbgg analytics server.
+CLI tool to upload your STS run history to my analytics server (give me your
+run histories pls).
 
 ## Features
 
-✅ **Automatic discovery** - Finds your run files automatically
-✅ **Smart duplicate detection** - Only uploads runs that aren't already on the server
-✅ **Steam ID detection** - Automatically extracts your Steam ID from the file path
-✅ **Cross-platform** - Works on macOS and Windows
-✅ **Secure** - Uses access code authentication
-✅ **Fast** - Checks hashes before uploading to save bandwidth
+**Automatic discovery** - Searches your computer and finds your run history files 
+**Duplicate detection** - Only uploads runs that aren't already on the server
+**Steam ID extraction** - Detects your Steam ID and sends it with the uploaded files
+**Cross-platform** - macOS, Windows 
+**Access Code** - Uploads have to be authorized with an access code. Ask Andrew for the code
 
 ## Installation
 
@@ -17,23 +17,21 @@ Simple command-line tool to upload your Slay the Spire 2 run history to the mbgg
 pip install mbgg-sts2-uploader
 ```
 
-That's it! No other dependencies needed.
-
 ## Usage
 
-### Basic Upload (prompts for access code)
+### Recommended (prompts for access code)
 
 ```bash
-mbgg-sts2-upload --server https://mbgg-api.up.railway.app
+mbgg-sts2-upload
 ```
 
 ### Upload with access code
 
 ```bash
-mbgg-sts2-upload --server https://mbgg-api.up.railway.app --access-code YOUR_SECRET_CODE
+mbgg-sts2-upload --access-code YOUR_SECRET_CODE
 ```
 
-### Dry run (see what would be uploaded)
+### Dry run, shows what would be uploaded
 
 ```bash
 mbgg-sts2-upload --dry-run
@@ -50,8 +48,8 @@ mbgg-sts2-upload --help
 1. **Finds run files** - Searches your STS2 save directory for `.run` files
 2. **Extracts Steam ID** - Gets your Steam ID from the directory structure
 3. **Computes hashes** - Calculates SHA256 hash of each run file
-4. **Checks server** - Asks server which runs it already has
-5. **Uploads missing runs** - Only uploads runs that aren't already on the server
+4. **Checks server** - Asks the server which runs it already has
+5. **Uploads missing runs** - Uploads runs that aren't already on the server
 
 ## File Locations
 
@@ -65,47 +63,6 @@ mbgg-sts2-upload --help
 %APPDATA%/SlayTheSpire2/steam/{STEAM_ID}/profile*/saves/history/*.run
 ```
 
-## Example Output
-
-```
-======================================================================
-STS2 RUN UPLOADER
-======================================================================
-Platform:       darwin
-Game directory: /Users/you/Library/Application Support/SlayTheSpire2
-Server:         http://localhost:8001
-----------------------------------------------------------------------
-
-[1/5] Detecting Steam ID...
-      ✓ Steam ID: 76561198032986989
-
-[2/5] Finding run files...
-      ✓ Found 97 run files
-
-[3/5] Computing file hashes...
-      ✓ Computed 97 hashes
-
-[4/5] Checking server for existing runs...
-      ✓ 10 already uploaded
-      ✓ 87 need to be uploaded
-
-[5/5] Uploading 87 runs...
-      [1/87] ✓ NECROBINDER A10
-      [2/87] ✓ NECROBINDER A10
-      ...
-
-======================================================================
-UPLOAD COMPLETE
-======================================================================
-Total runs found:      97
-Already on server:     10
-Newly uploaded:        87
-Errors:                0
-======================================================================
-
-✓ Upload successful!
-  View stats at: http://localhost:8000
-```
 
 ## Troubleshooting
 
@@ -116,39 +73,7 @@ Make sure you've played at least one game of Slay the Spire 2.
 Check that the game is installed and you have save files.
 
 ### "Access denied: Invalid access code"
-Your access code is incorrect. Get the correct code from the server admin.
+Your access code is incorrect. Ask Andrew for the code.
 
 ### "Connection refused"
 Make sure the server is running and accessible.
-
-## For Server Admins
-
-### Setting the Access Code
-
-The access code is configured in the backend `.env` file:
-
-```bash
-UPLOAD_ACCESS_CODE=your_secret_code_here
-```
-
-**Important:** Keep this code private! Share it only with users you want to allow uploads.
-
-### Distributing the Uploader
-
-You can share `sts2_uploader.py` with your friends. They just need:
-1. Python 3.7+
-2. `requests` library (`pip install requests`)
-3. The access code (share privately)
-
-## Security Notes
-
-- The access code is sent in the `X-Access-Code` header
-- Run data is transmitted as JSON (not binary)
-- Duplicate detection prevents re-uploading the same run
-- Each run is associated with the uploader's Steam ID
-
-## Privacy
-
-- The uploader sends your Steam ID (extracted from file path)
-- Run history data (deck, relics, choices, outcomes)
-- No other personal information is collected
