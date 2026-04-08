@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from auth import get_current_user, get_current_admin_user
+from compression import decompress_run_data
 from database import get_db
 from models import User, Run, AnalyticsCache
 from schemas import AnalyticsComputeRequest, AnalyticsComputeResponse, AnalyticsResponse
@@ -95,7 +96,8 @@ def filter_runs(db: Session, user_id: Optional[int], character: str, mode: str, 
     )
 
     runs = query.all()
-    return [run.raw_data for run in runs]
+    # Decompress run data before returning
+    return [decompress_run_data(run.raw_data) for run in runs]
 
 
 def compute_and_cache_analytics(
@@ -416,4 +418,5 @@ def filter_runs_by_steam_id(db: Session, steam_id: str, character: str, mode: st
     )
 
     runs = query.all()
-    return [run.raw_data for run in runs]
+    # Decompress run data before returning
+    return [decompress_run_data(run.raw_data) for run in runs]

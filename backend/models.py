@@ -1,7 +1,7 @@
 """
 Database models.
 """
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Index, UniqueConstraint, Text
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Index, UniqueConstraint, Text, LargeBinary
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -38,7 +38,7 @@ class Run(Base):
     game_version = Column(String(20), index=True)
     victory = Column(Boolean, nullable=False)
     uploaded_at = Column(DateTime(timezone=True), server_default=func.now())
-    raw_data = Column(JSONB, nullable=False)
+    raw_data = Column(LargeBinary, nullable=False)  # Compressed with zlib
 
     # Relationships
     user = relationship("User", back_populates="runs")

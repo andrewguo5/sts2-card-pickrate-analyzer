@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from auth import get_current_user, verify_access_code
+from compression import compress_run_data
 from database import get_db
 from models import User, Run
 from schemas import RunUpload, RunUploadResponse
@@ -89,6 +90,9 @@ def upload_run(
     # Extract metadata
     metadata = extract_run_metadata(run_data)
 
+    # Compress run data for storage
+    compressed_data = compress_run_data(run_data)
+
     # Create new run record
     new_run = Run(
         user_id=current_user.id,
@@ -98,7 +102,7 @@ def upload_run(
         num_players=metadata['num_players'],
         game_version=metadata['game_version'],
         victory=metadata['victory'],
-        raw_data=run_data
+        raw_data=compressed_data  # Store compressed
     )
 
     db.add(new_run)
@@ -185,6 +189,9 @@ def simple_upload(
     # Extract metadata
     metadata = extract_run_metadata(run_data)
 
+    # Compress run data for storage
+    compressed_data = compress_run_data(run_data)
+
     # Store run with Steam ID
     new_run = Run(
         user_id=None,  # Not using user accounts for simple upload
@@ -195,7 +202,7 @@ def simple_upload(
         num_players=metadata['num_players'],
         game_version=metadata['game_version'],
         victory=metadata['victory'],
-        raw_data=run_data
+        raw_data=compressed_data  # Store compressed
     )
 
     db.add(new_run)

@@ -5,6 +5,7 @@ Refactored from card_pickrate_analysis.py to work with database data instead of 
 """
 from collections import defaultdict
 from typing import List, Dict, Any, Optional
+from compression import decompress_run_data
 
 
 class CardPickRateAnalyzer:
