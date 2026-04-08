@@ -209,3 +209,74 @@ def simple_upload(
         character=new_run.character,
         ascension=new_run.ascension
     )
+
+
+class DeleteMyDataRequest(BaseModel):
+    """Request to delete all data for a Steam ID."""
+    steam_id: str
+
+
+class DeleteMyDataResponse(BaseModel):
+    """Response after deleting user data."""
+    success: bool
+    steam_id: str
+    runs_deleted: int
+    message: str
+
+
+@router.post("/delete-my-data", response_model=DeleteMyDataResponse)
+def delete_my_data(
+    request: DeleteMyDataRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete all runs associated with a Steam ID.
+
+    IMPORTANT: This is a destructive operation that cannot be undone.
+    Requires admin authentication via JWT token.
+
+    Security:
+    - Requires admin JWT token (not just access code)
+    - Only admins can delete user data
+    - Only deletes runs matching the exact Steam ID provided
+    - Returns count of deleted runs for transparency
+
+    Future enhancement: Use Steam OAuth to allow users to delete their own data.
+    """
+    # Verify admin privileges
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can delete user data"
+        )
+    steam_id = request.steam_id.strip()
+
+    if not steam_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Steam ID cannot be empty"
+        )
+
+    # Count runs before deletion
+    runs_to_delete = db.query(Run).filter(Run.steam_id == steam_id).all()
+    num_runs = len(runs_to_delete)
+
+    if num_runs == 0:
+        return DeleteMyDataResponse(
+            success=True,
+            steam_id=steam_id,
+            runs_deleted=0,
+            message=f"No runs found for Steam ID {steam_id}"
+        )
+
+    # Delete all runs for this Steam ID
+    db.query(Run).filter(Run.steam_id == steam_id).delete()
+    db.commit()
+
+    return DeleteMyDataResponse(
+        success=True,
+        steam_id=steam_id,
+        runs_deleted=num_runs,
+        message=f"Successfully deleted {num_runs} run(s) for Steam ID {steam_id}"
+    )

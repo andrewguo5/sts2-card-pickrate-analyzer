@@ -6,8 +6,13 @@ Automatically finds, hashes, and uploads Slay the Spire 2 run files to the analy
 Only uploads runs that don't already exist on the server.
 
 Usage:
+    # Upload runs
     python3 sts2_uploader.py --server https://your-server.com --access-code YOUR_SECRET_CODE
     python3 sts2_uploader.py  # Uses defaults: localhost and prompts for access code
+
+    # Delete your data from the server (ADMIN ONLY)
+    python3 sts2_uploader.py --delete-my-data --server https://your-server.com
+    # This will prompt for admin username/password
 """
 
 import os
@@ -118,6 +123,55 @@ def check_missing_hashes(server: str, access_code: str, hashes: List[str]) -> Li
         sys.exit(1)
 
 
+def login_admin(server: str, username: str, password: str) -> str:
+    """
+    Login as admin and get JWT token.
+
+    Args:
+        server: Server URL
+        username: Admin username
+        password: Admin password
+
+    Returns:
+        JWT access token
+
+    Raises:
+        requests.exceptions.HTTPError: If login fails
+    """
+    url = f"{server}/api/auth/token"
+    data = {"username": username, "password": password}
+
+    response = requests.post(url, data=data, timeout=30)
+    response.raise_for_status()
+    return response.json()['access_token']
+
+
+def delete_my_data(server: str, admin_token: str, steam_id: str) -> dict:
+    """
+    Delete all runs for a Steam ID from the server.
+
+    IMPORTANT: Requires admin authentication.
+
+    Args:
+        server: Server URL
+        admin_token: Admin JWT token
+        steam_id: Steam ID to delete data for
+
+    Returns:
+        Response dict with deletion details
+
+    Raises:
+        requests.exceptions.HTTPError: If request fails
+    """
+    url = f"{server}/api/runs/delete-my-data"
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    data = {"steam_id": steam_id}
+
+    response = requests.post(url, json=data, headers=headers, timeout=30)
+    response.raise_for_status()
+    return response.json()
+
+
 def upload_run(server: str, access_code: str, steam_id: str, run_file: Path) -> dict:
     """
     Upload a single run file to the server.
@@ -169,6 +223,8 @@ Examples:
                         help='Upload access code (will prompt if not provided)')
     parser.add_argument('--dry-run', action='store_true',
                         help='Show what would be uploaded without actually uploading')
+    parser.add_argument('--delete-my-data', action='store_true',
+                        help='DELETE all your run data from the server (requires confirmation)')
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='Verbose output')
 
@@ -189,6 +245,67 @@ Examples:
         print("✗ Could not find Steam ID in game directory")
         sys.exit(1)
     print(f"      ✓ Steam ID: {steam_id}")
+
+    # Handle data deletion if requested
+    if args.delete_my_data:
+        print("\n" + "=" * 70)
+        print("⚠️  DATA DELETION WARNING")
+        print("=" * 70)
+        print(f"This will DELETE all run data for Steam ID: {steam_id}")
+        print("This action CANNOT be undone!")
+        print("This operation requires ADMIN credentials.")
+        print("=" * 70)
+
+        confirmation = input("\nType 'DELETE' to confirm deletion: ").strip()
+        if confirmation != "DELETE":
+            print("✗ Deletion cancelled")
+            sys.exit(0)
+
+        # Get admin credentials
+        print("\nAdmin authentication required:")
+        admin_username = input("  Admin username: ").strip()
+        if not admin_username:
+            print("✗ Username required")
+            sys.exit(1)
+
+        import getpass
+        admin_password = getpass.getpass("  Admin password: ")
+        if not admin_password:
+            print("✗ Password required")
+            sys.exit(1)
+
+        # Login as admin
+        print("\nAuthenticating...")
+        try:
+            admin_token = login_admin(args.server, admin_username, admin_password)
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 401:
+                print("\n✗ Authentication failed: Invalid username or password")
+            else:
+                print(f"\n✗ Login failed: HTTP {e.response.status_code}")
+            sys.exit(1)
+        except Exception as e:
+            print(f"\n✗ Error: {e}")
+            sys.exit(1)
+
+        # Perform deletion
+        print("Deleting data...")
+        try:
+            result = delete_my_data(args.server, admin_token, steam_id)
+            print(f"\n✓ {result['message']}")
+            print(f"  Runs deleted: {result['runs_deleted']}")
+            sys.exit(0)
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 403:
+                print("\n✗ Access denied: Admin privileges required")
+            else:
+                print(f"\n✗ Deletion failed: HTTP {e.response.status_code}")
+                if args.verbose:
+                    print(f"  {e.response.text}")
+            sys.exit(1)
+        except Exception as e:
+            print(f"\n✗ Error: {e}")
+            sys.exit(1)
 
     # Find run files
     print("\n[2/5] Finding run files...")
