@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STS2 Card Pick Rate Analyzer</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+                'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .filters {
+            background: #1f2937;
+            padding: 20px 30px;
+            border-bottom: 2px solid #374151;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .filter-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .filter-select {
+            padding: 8px 12px;
+            border: 2px solid #374151;
+            border-radius: 6px;
+            background: #111827;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 180px;
+        }
+
+        .filter-select:hover {
+            border-color: #3b82f6;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .metadata {
+            background: #f3f4f6;
+            padding: 15px 30px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .metadata-item {
+            font-size: 14px;
+        }
+
+        .metadata-label {
+            font-weight: 600;
+            color: #6b7280;
+        }
+
+        .metadata-value {
+            color: #1f2937;
+            font-weight: 500;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 0;
+            min-height: 600px;
+        }
+
+        .sidebar {
+            border-right: 1px solid #e5e7eb;
+            background: #f9fafb;
+            overflow-y: auto;
+            max-height: calc(100vh - 250px);
+        }
+
+        .search-box {
+            padding: 20px;
+            position: sticky;
+            top: 0;
+            background: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
+            z-index: 10;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 15px;
+            border: 2px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .card-list {
+            padding: 10px;
+        }
+
+        .card-item {
+            padding: 12px 15px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .card-item:hover {
+            background: #e5e7eb;
+        }
+
+        .card-item.selected {
+            background: #dbeafe;
+            border-color: #3b82f6;
+        }
+
+        .card-name {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+
+        .card-stats {
+            font-size: 12px;
+            color: #6b7280;
+            display: flex;
+            gap: 15px;
+        }
+
+        .stat-badge {
+            background: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .main-panel {
+            padding: 30px;
+            overflow-y: auto;
+            max-height: calc(100vh - 250px);
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 400px;
+            color: #9ca3af;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .card-detail-header {
+            margin-bottom: 30px;
+        }
+
+        .card-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 15px;
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #6b7280;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .chart-section {
+            margin-top: 30px;
+        }
+
+        .chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 15px;
+        }
+
+        .chart-container {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .data-table {
+            margin-top: 30px;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        th {
+            background: #f3f4f6;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e5e7eb;
+            color: #1f2937;
+        }
+
+        tr:hover {
+            background: #f9fafb;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%);
+            transition: width 0.3s;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+
+        .error {
+            text-align: center;
+            padding: 40px;
+            color: #dc2626;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        // API configuration
+        const API_BASE_URL = 'https://mbgg-production.up.railway.app';
+
+        function ChartComponent({ chartData }) {
+            const chartRef = useRef(null);
+            const chartInstanceRef = useRef(null);
+
+            useEffect(() => {
+                if (!chartRef.current || !chartData || chartData.length === 0) return;
+
+                if (chartInstanceRef.current) {
+                    chartInstanceRef.current.destroy();
+                }
+
+                const ctx = chartRef.current.getContext('2d');
+
+                chartInstanceRef.current = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: chartData.map(d => d.floor),
+                        datasets: [
+                            {
+                                label: 'Smoothed Pick Rate',
+                                data: chartData.map(d => d.smoothed),
+                                borderColor: '#3b82f6',
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                fill: true,
+                                tension: 0.4,
+                                borderWidth: 3,
+                                pointRadius: 4,
+                                pointHoverRadius: 6
+                            },
+                            {
+                                label: 'Raw Pick Rate',
+                                data: chartData.map(d => d.raw),
+                                borderColor: '#8b5cf6',
+                                backgroundColor: 'transparent',
+                                fill: false,
+                                borderDash: [5, 5],
+                                borderWidth: 2,
+                                pointRadius: 4,
+                                pointHoverRadius: 6,
+                                pointBackgroundColor: '#8b5cf6'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const dataPoint = chartData[context.dataIndex];
+                                        return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}% (${dataPoint.picked}/${dataPoint.offered})`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Floor'
+                                },
+                                type: 'linear',
+                                min: 2,
+                                max: 46
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Pick Rate (%)'
+                                },
+                                min: 0,
+                                max: 100
+                            }
+                        }
+                    }
+                });
+
+                return () => {
+                    if (chartInstanceRef.current) {
+                        chartInstanceRef.current.destroy();
+                    }
+                };
+            }, [chartData]);
+
+            return <canvas ref={chartRef} style={{ maxHeight: '400px' }} />;
+        }
+
+        function App() {
+            const [data, setData] = useState(null);
+            const [selectedCard, setSelectedCard] = useState(null);
+            const [searchTerm, setSearchTerm] = useState('');
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+            const [selectedCharacter, setSelectedCharacter] = useState('regent');
+            const [selectedMode, setSelectedMode] = useState('singleplayer');
+            const [selectedAscension, setSelectedAscension] = useState('a10');
+
+            const characters = [
+                { id: 'ironclad', name: 'Ironclad' },
+                { id: 'silent', name: 'Silent' },
+                { id: 'regent', name: 'Regent' },
+                { id: 'necrobinder', name: 'Necrobinder' },
+                { id: 'defect', name: 'Defect' }
+            ];
+
+            const modes = [
+                { id: 'singleplayer', name: 'Singleplayer' },
+                { id: 'multiplayer', name: 'Multiplayer' },
+                { id: 'all', name: 'All Games' }
+            ];
+
+            const ascensions = [
+                { id: 'a10', name: 'A10' },
+                { id: 'a0-9', name: 'A0-9' },
+                { id: 'all', name: 'All Ascensions' }
+            ];
+
+            useEffect(() => {
+                setLoading(true);
+                setError(null);
+                setSelectedCard(null);
+
+                // Build API request params
+                const params = new URLSearchParams({
+                    character: selectedCharacter,
+                    mode: selectedMode,
+                    ascension: selectedAscension
+                });
+
+                fetch(`${API_BASE_URL}/api/analytics/global-stats?${params}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`API error: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(jsonData => {
+                        setData(jsonData);
+                        setLoading(false);
+                    })
+                    .catch(error => {
+                        console.error('Error loading data:', error);
+                        setError(error.message);
+                        setData(null);
+                        setLoading(false);
+                    });
+            }, [selectedCharacter, selectedMode, selectedAscension]);
+
+            const sortedCards = useMemo(() => {
+                if (!data) return [];
+
+                const cards = Object.entries(data.cards)
+                    .map(([cardId, cardData]) => ({
+                        id: cardId,
+                        name: cardId.replace('CARD.', ''),
+                        ...cardData.summary,
+                        rawData: cardData.raw_data,
+                        rawPickrates: cardData.raw_pickrates,
+                        smoothedPickrates: cardData.smoothed_pickrates
+                    }))
+                    .filter(card =>
+                        card.name.toLowerCase().includes(searchTerm.toLowerCase())
+                    )
+                    .sort((a, b) => b.total_offered - a.total_offered);
+
+                return cards;
+            }, [data, searchTerm]);
+
+            const chartData = useMemo(() => {
+                if (!selectedCard) return [];
+
+                const floors = Object.keys(selectedCard.smoothedPickrates).map(Number).sort((a, b) => a - b);
+
+                return floors.map(floor => ({
+                    floor,
+                    raw: selectedCard.rawPickrates[floor] * 100,
+                    smoothed: selectedCard.smoothedPickrates[floor] * 100,
+                    offered: selectedCard.rawData[floor].offered,
+                    picked: selectedCard.rawData[floor].picked
+                }));
+            }, [selectedCard]);
+
+            if (loading) {
+                return (
+                    <div className="container">
+                        <div className="header">
+                            <h1>STS2 Card Pick Rate Analyzer</h1>
+                        </div>
+                        <div className="loading">Loading data from server...</div>
+                    </div>
+                );
+            }
+
+            if (error) {
+                return (
+                    <div className="container">
+                        <div className="header">
+                            <h1>STS2 Card Pick Rate Analyzer</h1>
+                        </div>
+                        <div className="error">
+                            <p>Error loading data: {error}</p>
+                            <p style={{marginTop: '10px', fontSize: '14px'}}>
+                                Make sure the backend API is running and analytics have been computed.
+                            </p>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (!data) {
+                return (
+                    <div className="container">
+                        <div className="header">
+                            <h1>STS2 Card Pick Rate Analyzer</h1>
+                        </div>
+                        <div className="loading">No data available</div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="container">
+                    <div className="header">
+                        <h1>STS2 Card Pick Rate Analyzer</h1>
+                        <div className="subtitle">Card pick rates by floor</div>
+                    </div>
+
+                    <div className="filters">
+                        <div className="filter-group">
+                            <label className="filter-label">Character</label>
+                            <select
+                                className="filter-select"
+                                value={selectedCharacter}
+                                onChange={(e) => setSelectedCharacter(e.target.value)}
+                            >
+                                {characters.map(char => (
+                                    <option key={char.id} value={char.id}>{char.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="filter-group">
+                            <label className="filter-label">Mode</label>
+                            <select
+                                className="filter-select"
+                                value={selectedMode}
+                                onChange={(e) => setSelectedMode(e.target.value)}
+                            >
+                                {modes.map(mode => (
+                                    <option key={mode.id} value={mode.id}>{mode.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="filter-group">
+                            <label className="filter-label">Ascension</label>
+                            <select
+                                className="filter-select"
+                                value={selectedAscension}
+                                onChange={(e) => setSelectedAscension(e.target.value)}
+                            >
+                                {ascensions.map(asc => (
+                                    <option key={asc.id} value={asc.id}>{asc.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="metadata">
+                        <div className="metadata-item">
+                            <span className="metadata-label">Character: </span>
+                            <span className="metadata-value">{data.metadata.character.replace('CHARACTER.', '')}</span>
+                        </div>
+                        <div className="metadata-item">
+                            <span className="metadata-label">Ascension: </span>
+                            <span className="metadata-value">{data.metadata.ascension_level}</span>
+                        </div>
+                        <div className="metadata-item">
+                            <span className="metadata-label">Mode: </span>
+                            <span className="metadata-value">{data.metadata.multiplayer_filter || 'all'}</span>
+                        </div>
+                        <div className="metadata-item">
+                            <span className="metadata-label">Runs: </span>
+                            <span className="metadata-value">{data.metadata.runs_processed}</span>
+                        </div>
+                        <div className="metadata-item">
+                            <span className="metadata-label">Kernel Smoothing: </span>
+                            <span className="metadata-value">b={data.metadata.kernel_bandwidth}</span>
+                        </div>
+                    </div>
+
+                    <div className="content">
+                        <div className="sidebar">
+                            <div className="search-box">
+                                <input
+                                    type="text"
+                                    className="search-input"
+                                    placeholder="Search cards..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                            <div className="card-list">
+                                {sortedCards.map(card => (
+                                    <div
+                                        key={card.id}
+                                        className={`card-item ${selectedCard?.id === card.id ? 'selected' : ''}`}
+                                        onClick={() => setSelectedCard(card)}
+                                    >
+                                        <div className="card-name">{card.name}</div>
+                                        <div className="card-stats">
+                                            <span className="stat-badge">{card.total_offered} offered</span>
+                                            <span className="stat-badge">{(card.overall_pickrate * 100).toFixed(1)}%</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="main-panel">
+                            {!selectedCard ? (
+                                <div className="empty-state">
+                                    <div className="empty-state-icon">📊</div>
+                                    <h3>Select a card to view pick rate analysis</h3>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="card-detail-header">
+                                        <h2 className="card-title">{selectedCard.name}</h2>
+
+                                        <div className="summary-stats">
+                                            <div className="stat-card">
+                                                <div className="stat-label">Total Offered</div>
+                                                <div className="stat-value">{selectedCard.total_offered}</div>
+                                            </div>
+                                            <div className="stat-card">
+                                                <div className="stat-label">Total Picked</div>
+                                                <div className="stat-value">{selectedCard.total_picked}</div>
+                                            </div>
+                                            <div className="stat-card">
+                                                <div className="stat-label">Overall Pick Rate</div>
+                                                <div className="stat-value">{(selectedCard.overall_pickrate * 100).toFixed(1)}%</div>
+                                            </div>
+                                            <div className="stat-card">
+                                                <div className="stat-label">Floors Seen</div>
+                                                <div className="stat-value">{selectedCard.floors_seen}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="chart-section">
+                                        <h3 className="chart-title">Pick Rate by Floor (Kernel Smoothed)</h3>
+                                        <div className="chart-container">
+                                            <ChartComponent chartData={chartData} />
+                                        </div>
+                                    </div>
+
+                                    <div className="data-table">
+                                        <h3 className="chart-title">Detailed Floor Data</h3>
+                                        <div className="table-wrapper">
+                                            <table>
+                                                <thead>
+                                                    <tr>
+                                                        <th>Floor</th>
+                                                        <th>Offered</th>
+                                                        <th>Picked</th>
+                                                        <th>Pick Rate (Raw)</th>
+                                                        <th>Pick Rate (Smoothed)</th>
+                                                        <th>Pick Rate (Smoothed)</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {chartData.map(row => (
+                                                        <tr key={row.floor}>
+                                                            <td><strong>{row.floor}</strong></td>
+                                                            <td>{row.offered}</td>
+                                                            <td>{row.picked}</td>
+                                                            <td>{row.raw.toFixed(1)}%</td>
+                                                            <td><strong>{row.smoothed.toFixed(1)}%</strong></td>
+                                                            <td>
+                                                                <div className="progress-bar">
+                                                                    <div
+                                                                        className="progress-fill"
+                                                                        style={{ width: `${row.smoothed}%` }}
+                                                                    />
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
