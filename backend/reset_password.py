@@ -22,9 +22,19 @@ def reset_password(username: str, password: str):
             return
 
         # Update password
-        user.password_hash = get_password_hash(password)
+        from auth import verify_password
+        new_hash = get_password_hash(password)
+        user.password_hash = new_hash
         db.commit()
+        db.refresh(user)
+
         print(f"✓ Password reset for user '{username}'")
+
+        # Verify the password was set correctly
+        if verify_password(password, user.password_hash):
+            print(f"✓ Password verification successful")
+        else:
+            print(f"✗ WARNING: Password verification failed after reset!")
     finally:
         db.close()
 
