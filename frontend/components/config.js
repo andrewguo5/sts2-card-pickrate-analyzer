@@ -1,36 +1,24 @@
-// API configuration
-// Automatically detects if running locally or in production
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:8000'  // Local backend (run with: uvicorn backend.main:app --reload)
-    : 'https://mbgg-api.up.railway.app';  // Production backend
-
-// Character options
-const CHARACTERS = [
-    { id: 'ironclad', name: 'Ironclad' },
-    { id: 'silent', name: 'Silent' },
-    { id: 'regent', name: 'Regent' },
-    { id: 'necrobinder', name: 'Necrobinder' },
-    { id: 'defect', name: 'Defect' }
-];
-
-// Mode options
-const MODES = [
-    { id: 'singleplayer', name: 'Singleplayer' },
-    { id: 'multiplayer', name: 'Multiplayer' },
-    { id: 'all', name: 'All Games' }
-];
-
-// Ascension options
-const ASCENSIONS = [
-    { id: 'a10', name: 'A10' },
-    { id: 'a0-9', name: 'A0-9' },
-    { id: 'all', name: 'All Ascensions' }
-];
-
-// Export for use in other modules
+// API configuration and constants
 window.AppConfig = {
-    API_BASE_URL,
-    CHARACTERS,
-    MODES,
-    ASCENSIONS
+    API_BASE_URL: 'https://mbgg-api.up.railway.app',
+
+    CHARACTERS: [
+        { id: 'ironclad', name: 'Ironclad' },
+        { id: 'silent', name: 'Silent' },
+        { id: 'regent', name: 'Regent' },
+        { id: 'necrobinder', name: 'Necrobinder' },
+        { id: 'defect', name: 'Defect' }
+    ],
+
+    MODES: [
+        { id: 'singleplayer', name: 'Singleplayer' },
+        { id: 'multiplayer', name: 'Multiplayer' },
+        { id: 'all', name: 'All Games' }
+    ],
+
+    ASCENSIONS: [
+        { id: 'a10', name: 'A10' },
+        { id: 'a0-9', name: 'A0-9' },
+        { id: 'all', name: 'All Ascensions' }
+    ]
 };
