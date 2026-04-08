@@ -1,5 +1,8 @@
 // API configuration
-const API_BASE_URL = 'https://mbgg-api.up.railway.app';
+// Automatically detects if running locally or in production
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:8000'  // Local backend (run with: uvicorn backend.main:app --reload)
+    : 'https://mbgg-api.up.railway.app';  // Production backend
 
 // Character options
 const CHARACTERS = [
