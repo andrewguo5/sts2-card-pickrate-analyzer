@@ -8,6 +8,7 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
 
     <!-- Component imports -->
     <script src="components/config.js"></script>
@@ -36,6 +37,18 @@
             const [selectedUser, setSelectedUser] = useState(null); // null = global stats
             const [usersList, setUsersList] = useState([]);
             const [usernameCache, setUsernameCache] = useState({});
+
+            // Apply character theme colors
+            useEffect(() => {
+                const character = CHARACTERS.find(c => c.id === selectedCharacter);
+                if (character && character.colors) {
+                    const root = document.documentElement;
+                    root.style.setProperty('--char-primary', character.colors.primary);
+                    root.style.setProperty('--char-secondary', character.colors.secondary);
+                    root.style.setProperty('--char-accent', character.colors.accent);
+                    root.style.setProperty('--char-gradient', character.colors.gradient);
+                }
+            }, [selectedCharacter]);
 
             // Fetch users list on mount
             useEffect(() => {

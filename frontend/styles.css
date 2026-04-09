@@ -1,3 +1,12 @@
+/* CSS Custom Properties for Character Theming */
+:root {
+    /* Default colors (will be overridden by character theme) */
+    --char-primary: #3b82f6;
+    --char-secondary: #1e3a8a;
+    --char-accent: #93c5fd;
+    --char-gradient: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -22,7 +31,7 @@ body {
 }
 
 .header {
-    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+    background: var(--char-gradient);
     color: white;
     padding: 30px;
     text-align: center;
@@ -76,13 +85,13 @@ body {
 }
 
 .filter-select:hover {
-    border-color: #3b82f6;
+    border-color: var(--char-primary);
 }
 
 .filter-select:focus {
     outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    border-color: var(--char-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--char-primary) 10%, transparent);
 }
 
 .metadata {
@@ -163,8 +172,8 @@ body {
 }
 
 .card-item.selected {
-    background: #dbeafe;
-    border-color: #3b82f6;
+    background: color-mix(in srgb, var(--char-accent) 30%, white);
+    border-color: var(--char-primary);
 }
 
 .card-name {
@@ -230,7 +239,7 @@ body {
     background: #f3f4f6;
     padding: 15px;
     border-radius: 8px;
-    border-left: 4px solid #3b82f6;
+    border-left: 4px solid var(--char-primary);
 }
 
 .stat-label {
@@ -309,7 +318,7 @@ tr:hover {
 
 .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%);
+    background: var(--char-gradient);
     transition: width 0.3s;
 }
 
