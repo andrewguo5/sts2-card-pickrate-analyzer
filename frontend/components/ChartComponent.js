@@ -31,9 +31,9 @@ const ChartComponent = ({ chartData }) => {
         // Boss floors and act boundaries
         const BOSS_FLOORS = [17, 34, 51];
         const ACT_BOUNDARIES = [
-            { start: 2, end: 17, label: 'Act 1', color: hexToRgba(primaryColor, 0.05) },
-            { start: 17, end: 34, label: 'Act 2', color: hexToRgba(primaryColor, 0.10) },
-            { start: 34, end: 51, label: 'Act 3', color: hexToRgba(primaryColor, 0.15) }
+            { start: 2, end: 17, label: 'Act 1', color: 'rgba(0, 0, 0, 0.03)' },
+            { start: 17, end: 34, label: 'Act 2', color: 'rgba(0, 0, 0, 0.06)' },
+            { start: 34, end: 51, label: 'Act 3', color: 'rgba(0, 0, 0, 0.09)' }
         ];
 
         chartInstanceRef.current = new Chart(ctx, {
@@ -91,18 +91,22 @@ const ChartComponent = ({ chartData }) => {
                                     xMin: act.start,
                                     xMax: act.end,
                                     backgroundColor: act.color,
-                                    borderWidth: 0,
-                                    label: {
-                                        display: true,
-                                        content: act.label,
-                                        position: 'end',
-                                        yAdjust: 20,
-                                        xAdjust: -10,
-                                        color: '#6b7280',
-                                        font: {
-                                            size: 12,
-                                            weight: 'bold'
-                                        }
+                                    borderWidth: 0
+                                };
+                                return acc;
+                            }, {}),
+                            // Act labels positioned below x-axis
+                            ...ACT_BOUNDARIES.reduce((acc, act, index) => {
+                                const midPoint = (act.start + act.end) / 2;
+                                acc[`act${index + 1}Label`] = {
+                                    type: 'label',
+                                    xValue: midPoint,
+                                    yValue: -5,
+                                    content: act.label,
+                                    color: '#6b7280',
+                                    font: {
+                                        size: 12,
+                                        weight: 'bold'
                                     }
                                 };
                                 return acc;
