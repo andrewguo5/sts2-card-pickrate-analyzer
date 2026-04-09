@@ -31,9 +31,9 @@ const ChartComponent = ({ chartData }) => {
         // Boss floors and act boundaries
         const BOSS_FLOORS = [17, 34, 51];
         const ACT_BOUNDARIES = [
-            { start: 2, end: 17, label: 'Act 1', color: 'rgba(0, 0, 0, 0.02)' },
-            { start: 17, end: 34, label: 'Act 2', color: 'rgba(0, 0, 0, 0.04)' },
-            { start: 34, end: 51, label: 'Act 3', color: 'rgba(0, 0, 0, 0.06)' }
+            { start: 2, end: 17, label: 'Act 1', color: hexToRgba(primaryColor, 0.05) },
+            { start: 17, end: 34, label: 'Act 2', color: hexToRgba(primaryColor, 0.10) },
+            { start: 34, end: 51, label: 'Act 3', color: hexToRgba(primaryColor, 0.15) }
         ];
 
         chartInstanceRef.current = new Chart(ctx, {
@@ -95,38 +95,27 @@ const ChartComponent = ({ chartData }) => {
                                     label: {
                                         display: true,
                                         content: act.label,
-                                        position: 'start',
+                                        position: 'end',
+                                        yAdjust: 20,
+                                        xAdjust: -10,
                                         color: '#6b7280',
                                         font: {
-                                            size: 11,
+                                            size: 12,
                                             weight: 'bold'
-                                        },
-                                        yAdjust: -10
+                                        }
                                     }
                                 };
                                 return acc;
                             }, {}),
-                            // Boss floor markers
+                            // Boss floor markers (vertical lines only, no labels)
                             ...BOSS_FLOORS.reduce((acc, floor, index) => {
                                 acc[`boss${index}`] = {
                                     type: 'line',
                                     xMin: floor,
                                     xMax: floor,
-                                    borderColor: hexToRgba(secondaryColor, 0.5),
+                                    borderColor: hexToRgba(secondaryColor, 0.4),
                                     borderWidth: 2,
-                                    borderDash: [8, 4],
-                                    label: {
-                                        display: true,
-                                        content: `Act ${index + 1} Boss`,
-                                        position: 'start',
-                                        backgroundColor: hexToRgba(secondaryColor, 0.9),
-                                        color: 'white',
-                                        font: {
-                                            size: 10,
-                                            weight: 'bold'
-                                        },
-                                        yAdjust: 10
-                                    }
+                                    borderDash: [8, 4]
                                 };
                                 return acc;
                             }, {})
