@@ -6,12 +6,12 @@ Automatically finds, hashes, and uploads Slay the Spire 2 run files to the analy
 Only uploads runs that don't already exist on the server.
 
 Usage:
-    # Upload runs
-    python3 sts2_uploader.py --server https://your-server.com --access-code YOUR_SECRET_CODE
-    python3 sts2_uploader.py  # Uses defaults: localhost and prompts for access code
+    # Upload runs (uses production server by default)
+    python3 sts2_uploader.py --access-code YOUR_SECRET_CODE
+    python3 sts2_uploader.py  # Prompts for access code
 
     # Delete your data from the server (ADMIN ONLY)
-    python3 sts2_uploader.py --delete-my-data --server https://your-server.com
+    python3 sts2_uploader.py --delete-my-data
     # This will prompt for admin username/password
 """
 
@@ -207,18 +207,21 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Upload to local server (prompts for access code)
+  # Upload to production server (prompts for access code)
   python3 sts2_uploader.py
 
-  # Upload to remote server with access code
-  python3 sts2_uploader.py --server https://sts2.example.com --access-code mycode123
+  # Upload with access code (no prompt)
+  python3 sts2_uploader.py --access-code mycode123
 
   # Dry run (show what would be uploaded without uploading)
   python3 sts2_uploader.py --dry-run
+
+  # Use custom server
+  python3 sts2_uploader.py --server http://localhost:8001
         """
     )
-    parser.add_argument('--server', default='http://localhost:8001',
-                        help='Server URL (default: http://localhost:8001)')
+    parser.add_argument('--server', default='https://mbgg-api.up.railway.app',
+                        help='Server URL (default: https://mbgg-api.up.railway.app)')
     parser.add_argument('--access-code', default=None,
                         help='Upload access code (will prompt if not provided)')
     parser.add_argument('--dry-run', action='store_true',
