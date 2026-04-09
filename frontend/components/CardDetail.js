@@ -26,10 +26,6 @@ const CardDetail = ({ selectedCard, chartData }) => {
             React.createElement('div', { className: 'stat-card' },
                 React.createElement('div', { className: 'stat-label' }, 'Total Picked'),
                 React.createElement('div', { className: 'stat-value' }, selectedCard.total_picked)
-            ),
-            React.createElement('div', { className: 'stat-card' },
-                React.createElement('div', { className: 'stat-label' }, 'Total Passed'),
-                React.createElement('div', { className: 'stat-value' }, selectedCard.total_passed)
             )
         ),
 

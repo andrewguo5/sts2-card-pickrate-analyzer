@@ -142,38 +142,6 @@
                 }));
             }, [selectedCard]);
 
-            if (loading) {
-                return React.createElement('div', { className: 'container' },
-                    React.createElement('div', { className: 'header' },
-                        React.createElement('h1', null, 'STS2 Card Pick Rate Analyzer')
-                    ),
-                    React.createElement('div', { className: 'loading' }, 'Loading data from server...')
-                );
-            }
-
-            if (error) {
-                return React.createElement('div', { className: 'container' },
-                    React.createElement('div', { className: 'header' },
-                        React.createElement('h1', null, 'STS2 Card Pick Rate Analyzer')
-                    ),
-                    React.createElement('div', { className: 'error' },
-                        React.createElement('p', null, 'Error loading data: ', error),
-                        React.createElement('p', { style: { marginTop: '10px', fontSize: '14px' } },
-                            'Make sure the backend API is running and analytics have been computed.'
-                        )
-                    )
-                );
-            }
-
-            if (!data) {
-                return React.createElement('div', { className: 'container' },
-                    React.createElement('div', { className: 'header' },
-                        React.createElement('h1', null, 'STS2 Card Pick Rate Analyzer')
-                    ),
-                    React.createElement('div', { className: 'loading' }, 'No data available')
-                );
-            }
-
             return React.createElement('div', { className: 'container' },
                 // Header
                 React.createElement('div', { className: 'header' },
@@ -196,25 +164,35 @@
                 }),
 
                 // MetadataBar
-                React.createElement(window.MetadataBar, { metadata: data.metadata }),
+                data && React.createElement(window.MetadataBar, { metadata: data.metadata }),
 
                 // Content area
                 React.createElement('div', { className: 'content' },
                     // CardList sidebar
-                    React.createElement(window.CardList, {
-                        cards: sortedCards,
-                        selectedCard,
-                        onSelectCard: setSelectedCard,
-                        searchTerm,
-                        onSearchChange: setSearchTerm
-                    }),
+                    loading || error || !data
+                        ? React.createElement('div', { className: 'sidebar' },
+                            React.createElement('div', { className: 'loading', style: { padding: '20px', textAlign: 'center' } },
+                                loading ? 'Loading...' : error ? `Error: ${error}` : 'No data available'
+                            )
+                        )
+                        : React.createElement(window.CardList, {
+                            cards: sortedCards,
+                            selectedCard,
+                            onSelectCard: setSelectedCard,
+                            searchTerm,
+                            onSearchChange: setSearchTerm
+                        }),
 
                     // CardDetail main panel
                     React.createElement('div', { className: 'main-panel' },
-                        React.createElement(window.CardDetail, {
-                            selectedCard,
-                            chartData
-                        })
+                        loading || error || !data
+                            ? React.createElement('div', { className: 'loading', style: { padding: '40px', textAlign: 'center' } },
+                                loading ? 'Loading...' : error ? `Error loading data: ${error}` : 'No data available'
+                            )
+                            : React.createElement(window.CardDetail, {
+                                selectedCard,
+                                chartData
+                            })
                     )
                 )
             );

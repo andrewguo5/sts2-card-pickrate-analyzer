@@ -95,22 +95,6 @@ const ChartComponent = ({ chartData }) => {
                                 };
                                 return acc;
                             }, {}),
-                            // Act labels positioned below x-axis
-                            ...ACT_BOUNDARIES.reduce((acc, act, index) => {
-                                const midPoint = (act.start + act.end) / 2;
-                                acc[`act${index + 1}Label`] = {
-                                    type: 'label',
-                                    xValue: midPoint,
-                                    yValue: -5,
-                                    content: act.label,
-                                    color: '#6b7280',
-                                    font: {
-                                        size: 12,
-                                        weight: 'bold'
-                                    }
-                                };
-                                return acc;
-                            }, {}),
                             // Boss floor markers (vertical lines only, no labels)
                             ...BOSS_FLOORS.reduce((acc, floor, index) => {
                                 acc[`boss${index}`] = {
