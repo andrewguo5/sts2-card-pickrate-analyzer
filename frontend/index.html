@@ -37,6 +37,9 @@
             const [selectedUser, setSelectedUser] = useState(null); // null = global stats
             const [usersList, setUsersList] = useState([]);
             const [usernameCache, setUsernameCache] = useState({});
+            const [sortBy, setSortBy] = useState('offered');
+            const [filterType, setFilterType] = useState('all');
+            const [filterRarity, setFilterRarity] = useState('all');
 
             // Apply character theme colors
             useEffect(() => {
@@ -111,22 +114,50 @@
             const sortedCards = useMemo(() => {
                 if (!data) return [];
 
-                const cards = Object.entries(data.cards)
+                let cards = Object.entries(data.cards)
                     .map(([cardId, cardData]) => ({
                         id: cardId,
-                        name: cardId.replace('CARD.', ''),
+                        name: cardData.summary.name || cardId.replace('CARD.', ''),
                         ...cardData.summary,
                         rawData: cardData.raw_data,
                         rawPickrates: cardData.raw_pickrates,
                         smoothedPickrates: cardData.smoothed_pickrates
-                    }))
-                    .filter(card =>
-                        card.name.toLowerCase().includes(searchTerm.toLowerCase())
-                    )
-                    .sort((a, b) => b.total_offered - a.total_offered);
+                    }));
+
+                // Apply filters
+                cards = cards.filter(card => {
+                    // Search filter
+                    if (searchTerm && !card.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+                        return false;
+                    }
+
+                    // Type filter
+                    if (filterType !== 'all' && card.type !== filterType) {
+                        return false;
+                    }
+
+                    // Rarity filter
+                    if (filterRarity !== 'all' && card.rarity !== filterRarity) {
+                        return false;
+                    }
+
+                    return true;
+                });
+
+                // Apply sorting
+                cards.sort((a, b) => {
+                    if (sortBy === 'offered') {
+                        return b.total_offered - a.total_offered;
+                    } else if (sortBy === 'pickrate') {
+                        return b.overall_pickrate - a.overall_pickrate;
+                    } else if (sortBy === 'alphabetical') {
+                        return a.name.localeCompare(b.name);
+                    }
+                    return 0;
+                });
 
                 return cards;
-            }, [data, searchTerm]);
+            }, [data, searchTerm, sortBy, filterType, filterRarity]);
 
             const chartData = useMemo(() => {
                 if (!selectedCard) return [];
@@ -180,7 +211,13 @@
                             selectedCard,
                             onSelectCard: setSelectedCard,
                             searchTerm,
-                            onSearchChange: setSearchTerm
+                            onSearchChange: setSearchTerm,
+                            sortBy,
+                            onSortChange: setSortBy,
+                            filterType,
+                            onFilterTypeChange: setFilterType,
+                            filterRarity,
+                            onFilterRarityChange: setFilterRarity
                         }),
 
                     // CardDetail main panel

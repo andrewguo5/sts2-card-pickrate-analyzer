@@ -12,6 +12,7 @@ from database import get_db
 from models import User, Run, AnalyticsCache
 from schemas import AnalyticsComputeRequest, AnalyticsComputeResponse, AnalyticsResponse
 from analytics_engine import compute_pickrates
+from card_metadata import get_card_metadata
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
@@ -35,6 +36,27 @@ BUCKETS = [
     {"mode": "multiplayer", "ascension": "all"},
     {"mode": "all", "ascension": "all"},
 ]
+
+
+def enrich_with_metadata(analytics_data: dict) -> dict:
+    """
+    Enrich analytics data with card metadata from Spire Codex.
+
+    Adds name, type, rarity to each card's data.
+    """
+    enriched = analytics_data.copy()
+
+    for card_id, card_data in enriched.get("cards", {}).items():
+        metadata = get_card_metadata(card_id)
+        if metadata:
+            # Add metadata fields to the card's summary
+            if "summary" in card_data:
+                card_data["summary"]["name"] = metadata["name"]
+                card_data["summary"]["type"] = metadata["type"]
+                card_data["summary"]["rarity"] = metadata["rarity"]
+                card_data["summary"]["cost"] = metadata["cost"]
+
+    return enriched
 
 
 def parse_ascension_filter(ascension: str):
@@ -243,7 +265,7 @@ def get_my_stats(
     ).first()
 
     if cache_entry:
-        return cache_entry.pickrate_data
+        return enrich_with_metadata(cache_entry.pickrate_data)
 
     # Cache miss - compute on demand
     result = compute_and_cache_analytics(
@@ -254,7 +276,7 @@ def get_my_stats(
         ascension
     )
 
-    return result
+    return enrich_with_metadata(result)
 
 
 @router.get("/global-stats", response_model=AnalyticsResponse)
@@ -291,7 +313,7 @@ def get_global_stats(
     ).first()
 
     if cache_entry:
-        return cache_entry.pickrate_data
+        return enrich_with_metadata(cache_entry.pickrate_data)
 
     # Cache miss - compute on demand
     result = compute_and_cache_analytics(
@@ -302,7 +324,7 @@ def get_global_stats(
         ascension
     )
 
-    return result
+    return enrich_with_metadata(result)
 
 
 @router.get("/users")
