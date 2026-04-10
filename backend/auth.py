@@ -37,14 +37,36 @@ def verify_access_code(x_access_code: str = Header(...)) -> bool:
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash."""
+    """
+    Verify a password against its hash.
+
+    Strips leading/trailing whitespace from password to handle input variations.
+    """
+    # Strip whitespace from password input (common source of login issues)
+    plain_password = plain_password.strip()
+
+    # Strip whitespace from hash (defensive, shouldn't be needed but helps with DB issues)
+    hashed_password = hashed_password.strip()
+
+    # bcrypt.checkpw expects bytes for both arguments
+    # Hash is stored as UTF-8 string in DB, so encode it back to bytes
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 
 def get_password_hash(password: str) -> str:
-    """Hash a password."""
+    """
+    Hash a password for secure storage.
+
+    Strips leading/trailing whitespace from password before hashing.
+    """
+    # Strip whitespace to prevent accidental whitespace in stored passwords
+    password = password.strip()
+
+    # Generate salt and hash
     salt = bcrypt.gensalt()
     hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+
+    # Return as UTF-8 string for database storage
     return hashed.decode('utf-8')
 
 
