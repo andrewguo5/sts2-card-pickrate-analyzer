@@ -10,12 +10,71 @@ from sqlalchemy.orm import Session
 from auth import get_current_user, verify_access_code
 from compression import compress_run_data
 from database import get_db
-from models import User, Run
+from models import User, Run, AnalyticsCache
 from schemas import RunUpload, RunUploadResponse
 from typing import List, Optional
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/runs", tags=["runs"])
+
+
+def invalidate_affected_cache(db: Session, character: str, ascension: int, num_players: int, user_id: Optional[int] = None):
+    """
+    Invalidate cache entries affected by a new run upload.
+
+    Deletes cache entries for:
+    - Exact match: specific character, mode, ascension
+    - Broader aggregations: 'all' ascensions, 'all' modes
+    - Both user-specific and global stats
+
+    Args:
+        db: Database session
+        character: Character ID (e.g., "CHARACTER.REGENT")
+        ascension: Ascension level (0-10)
+        num_players: Number of players in run
+        user_id: User ID (for user-specific stats)
+    """
+    # Determine mode based on num_players
+    if num_players == 1:
+        specific_mode = "singleplayer"
+    else:
+        specific_mode = "multiplayer"
+
+    # Determine ascension bucket
+    if ascension == 10:
+        specific_ascension = "a10"
+    else:
+        specific_ascension = "a0-9"
+
+    # All combinations that need invalidation
+    invalidation_targets = [
+        # Specific combinations
+        (specific_mode, specific_ascension),
+        (specific_mode, "all"),  # All ascensions for this mode
+        ("all", specific_ascension),  # All modes for this ascension
+        ("all", "all"),  # All modes, all ascensions
+    ]
+
+    # Invalidate for both user-specific and global stats
+    for mode, asc in invalidation_targets:
+        # Delete user-specific cache
+        if user_id:
+            db.query(AnalyticsCache).filter(
+                AnalyticsCache.user_id == user_id,
+                AnalyticsCache.character == character,
+                AnalyticsCache.mode == mode,
+                AnalyticsCache.ascension == asc
+            ).delete()
+
+        # Delete global cache
+        db.query(AnalyticsCache).filter(
+            AnalyticsCache.user_id.is_(None),
+            AnalyticsCache.character == character,
+            AnalyticsCache.mode == mode,
+            AnalyticsCache.ascension == asc
+        ).delete()
+
+    db.commit()
 
 
 class CheckHashesRequest(BaseModel):
@@ -108,6 +167,15 @@ def upload_run(
     db.add(new_run)
     db.commit()
     db.refresh(new_run)
+
+    # Invalidate affected cache entries
+    invalidate_affected_cache(
+        db,
+        character=metadata['character'],
+        ascension=metadata['ascension'],
+        num_players=metadata['num_players'],
+        user_id=current_user.id
+    )
 
     return RunUploadResponse(
         id=new_run.id,
@@ -208,6 +276,15 @@ def simple_upload(
     db.add(new_run)
     db.commit()
     db.refresh(new_run)
+
+    # Invalidate affected cache entries (no user_id for simple upload)
+    invalidate_affected_cache(
+        db,
+        character=metadata['character'],
+        ascension=metadata['ascension'],
+        num_players=metadata['num_players'],
+        user_id=None
+    )
 
     return RunUploadResponse(
         id=new_run.id,

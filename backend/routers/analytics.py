@@ -2,6 +2,7 @@
 Analytics computation and retrieval routes.
 """
 from typing import Optional
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
@@ -15,6 +16,9 @@ from analytics_engine import compute_pickrates
 from card_metadata import get_card_metadata
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
+
+# Cache TTL: 24 hours
+CACHE_TTL_HOURS = 24
 
 
 # Character mapping
@@ -36,6 +40,24 @@ BUCKETS = [
     {"mode": "multiplayer", "ascension": "all"},
     {"mode": "all", "ascension": "all"},
 ]
+
+
+def is_cache_fresh(cache_entry: AnalyticsCache) -> bool:
+    """
+    Check if a cache entry is still fresh (within TTL).
+
+    Args:
+        cache_entry: AnalyticsCache database entry
+
+    Returns:
+        True if cache is fresh, False if stale
+    """
+    if not cache_entry or not cache_entry.computed_at:
+        return False
+
+    ttl = timedelta(hours=CACHE_TTL_HOURS)
+    age = datetime.utcnow() - cache_entry.computed_at.replace(tzinfo=None)
+    return age < ttl
 
 
 def enrich_with_metadata(analytics_data: dict) -> dict:
@@ -264,7 +286,8 @@ def get_my_stats(
         AnalyticsCache.ascension == ascension
     ).first()
 
-    if cache_entry:
+    # Return cached data if fresh
+    if cache_entry and is_cache_fresh(cache_entry):
         return enrich_with_metadata(cache_entry.pickrate_data)
 
     # Cache miss - compute on demand
@@ -312,7 +335,8 @@ def get_global_stats(
         AnalyticsCache.ascension == ascension
     ).first()
 
-    if cache_entry:
+    # Return cached data if fresh
+    if cache_entry and is_cache_fresh(cache_entry):
         return enrich_with_metadata(cache_entry.pickrate_data)
 
     # Cache miss - compute on demand
@@ -325,6 +349,50 @@ def get_global_stats(
     )
 
     return enrich_with_metadata(result)
+
+
+@router.delete("/cache/clear")
+def clear_cache(
+    character: Optional[str] = Query(None, description="Clear cache for specific character only"),
+    current_admin: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Clear analytics cache (admin only).
+
+    Query parameters:
+        - character: Optional character filter (e.g., 'regent'). If not provided, clears ALL cache.
+
+    Returns:
+        Number of cache entries deleted
+    """
+    query = db.query(AnalyticsCache)
+
+    if character:
+        # Clear cache for specific character
+        character_upper = character.upper()
+        full_character = f"CHARACTER.{character_upper}"
+
+        if full_character not in CHARACTERS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid character: {character}"
+            )
+
+        query = query.filter(AnalyticsCache.character == full_character)
+
+    # Count before deleting
+    count = query.count()
+
+    # Delete cache entries
+    query.delete()
+    db.commit()
+
+    return {
+        "status": "success",
+        "entries_deleted": count,
+        "scope": f"character={character}" if character else "all characters"
+    }
 
 
 @router.get("/users")
