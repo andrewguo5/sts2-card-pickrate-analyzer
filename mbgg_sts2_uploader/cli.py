@@ -138,10 +138,10 @@ def login_admin(server: str, username: str, password: str) -> str:
     Raises:
         requests.exceptions.HTTPError: If login fails
     """
-    url = f"{server}/api/auth/token"
+    url = f"{server}/api/auth/login"
     data = {"username": username, "password": password}
 
-    response = requests.post(url, data=data, timeout=30)
+    response = requests.post(url, json=data, timeout=30)
     response.raise_for_status()
     return response.json()['access_token']
 
