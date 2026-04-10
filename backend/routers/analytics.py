@@ -66,7 +66,11 @@ def enrich_with_metadata(analytics_data: dict) -> dict:
 
     Adds name, type, rarity to each card's data.
     """
+    import logging
+    logger = logging.getLogger(__name__)
+
     enriched = analytics_data.copy()
+    missing_metadata = []
 
     for card_id, card_data in enriched.get("cards", {}).items():
         metadata = get_card_metadata(card_id)
@@ -77,6 +81,11 @@ def enrich_with_metadata(analytics_data: dict) -> dict:
                 card_data["summary"]["type"] = metadata["type"]
                 card_data["summary"]["rarity"] = metadata["rarity"]
                 card_data["summary"]["cost"] = metadata["cost"]
+        else:
+            missing_metadata.append(card_id)
+
+    if missing_metadata:
+        logger.warning(f"Missing metadata for {len(missing_metadata)} cards: {missing_metadata[:10]}")
 
     return enriched
 
@@ -471,7 +480,7 @@ def get_user_stats(
         "cards": pickrate_data["cards"]
     }
 
-    return result
+    return enrich_with_metadata(result)
 
 
 def filter_runs_by_steam_id(db: Session, steam_id: str, character: str, mode: str, ascension: str):
