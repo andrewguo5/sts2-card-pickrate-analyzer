@@ -31,31 +31,41 @@ body {
     overflow: hidden;
 }
 
-.header {
-    background: var(--char-gradient);
-    color: white;
-    padding: 30px;
-    text-align: center;
-}
-
-.header h1 {
-    font-size: 32px;
-    margin-bottom: 10px;
-}
-
-.header .subtitle {
-    font-size: 16px;
-    opacity: 0.9;
-}
-
 .filters {
     background: #1f2937;
-    padding: 20px 30px;
+    padding: 12px 30px;
     border-bottom: 2px solid #374151;
     display: flex;
     gap: 20px;
     align-items: center;
     flex-wrap: wrap;
+    flex-shrink: 0;
+    z-index: 100;
+}
+
+.scrollable-content {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    background: var(--char-gradient);
+    color: white;
+    padding: 15px 30px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.header h1 {
+    font-size: 24px;
+    margin-bottom: 4px;
+}
+
+.header .subtitle {
+    font-size: 14px;
+    opacity: 0.9;
 }
 
 .filter-group {
@@ -97,7 +107,7 @@ body {
 
 .metadata {
     background: #f3f4f6;
-    padding: 15px 30px;
+    padding: 10px 30px;
     border-bottom: 1px solid #e5e7eb;
     display: flex;
     gap: 30px;

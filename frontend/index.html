@@ -212,13 +212,7 @@
             }, [selectedCard]);
 
             return React.createElement('div', { className: 'container' },
-                // Header
-                React.createElement('div', { className: 'header' },
-                    React.createElement('h1', null, 'STS2 Card Pick Rate Analyzer'),
-                    React.createElement('div', { className: 'subtitle' }, 'Card pick rates by floor')
-                ),
-
-                // FilterBar
+                // FilterBar (sticky)
                 React.createElement(window.FilterBar, {
                     selectedCharacter,
                     setSelectedCharacter,
@@ -232,10 +226,18 @@
                     usernameCache
                 }),
 
-                // MetadataBar
-                data && React.createElement(window.MetadataBar, { metadata: data.metadata }),
+                // Scrollable content wrapper
+                React.createElement('div', { className: 'scrollable-content' },
+                    // Header
+                    React.createElement('div', { className: 'header' },
+                        React.createElement('h1', null, 'STS2 Card Pick Rate Analyzer'),
+                        React.createElement('div', { className: 'subtitle' }, 'Card pick rates by floor')
+                    ),
 
-                // Content area
+                    // MetadataBar
+                    data && React.createElement(window.MetadataBar, { metadata: data.metadata }),
+
+                    // Content area
                 React.createElement('div', { className: 'content' },
                     // CardList sidebar
                     loading || error || !data
@@ -272,7 +274,8 @@
                                 baselineSkipData: data?.baseline_skip_data
                             })
                     )
-                )
+                ) // End of content
+                ) // End of scrollable-content
             );
         }
 
