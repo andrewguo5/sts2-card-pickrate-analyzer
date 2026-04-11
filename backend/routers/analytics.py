@@ -176,8 +176,8 @@ def compute_and_cache_analytics(
     # Filter runs
     runs = filter_runs(db, user_id, character, mode, ascension)
 
-    # Compute pick rates
-    pickrate_data = compute_pickrates(runs, bandwidth=2)
+    # Compute pick rates (with character filter to exclude cross-class cards)
+    pickrate_data = compute_pickrates(runs, bandwidth=2, character=character)
 
     # Add metadata
     metadata = {
@@ -462,8 +462,8 @@ def get_user_stats(
     # Filter runs by steam_id
     runs = filter_runs_by_steam_id(db, steam_id, full_character, mode, ascension)
 
-    # Compute pick rates
-    pickrate_data = compute_pickrates(runs, bandwidth=2)
+    # Compute pick rates (with character filter to exclude cross-class cards)
+    pickrate_data = compute_pickrates(runs, bandwidth=2, character=full_character)
 
     # Add metadata
     metadata = {

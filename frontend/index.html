@@ -13,9 +13,14 @@
     <!-- Component imports -->
     <script src="components/config.js"></script>
     <script src="components/ChartComponent.js"></script>
+    <script src="components/SkipRateChart.js"></script>
+    <script src="components/WinRateChart.js"></script>
     <script src="components/FilterBar.js"></script>
     <script src="components/MetadataBar.js"></script>
     <script src="components/CardList.js"></script>
+    <script src="components/PickRateTab.js"></script>
+    <script src="components/SkipRateTab.js"></script>
+    <script src="components/WinRateTab.js"></script>
     <script src="components/CardDetail.js"></script>
 </head>
 <body>
@@ -173,6 +178,34 @@
                 }));
             }, [selectedCard]);
 
+            const skipRateData = useMemo(() => {
+                if (!selectedCard || !selectedCard.smoothedSkiprates) return [];
+
+                const floors = Object.keys(selectedCard.smoothedSkiprates).map(Number).sort((a, b) => a - b);
+
+                return floors.map(floor => ({
+                    floor,
+                    raw: (selectedCard.rawSkiprates[floor] || 0) * 100,
+                    smoothed: (selectedCard.smoothedSkiprates[floor] || 0) * 100,
+                    baseline: data.baseline_skip_data?.smoothed?.[floor] ? data.baseline_skip_data.smoothed[floor] * 100 : undefined,
+                    offered: selectedCard.skip_data?.[floor]?.offered || 0,
+                    skipped: selectedCard.skip_data?.[floor]?.skipped || 0
+                }));
+            }, [selectedCard, data]);
+
+            const winRateData = useMemo(() => {
+                if (!selectedCard || !selectedCard.winrates_by_act) return [];
+
+                const acts = Object.keys(selectedCard.winrates_by_act).map(Number).sort((a, b) => a - b);
+
+                return acts.map(act => ({
+                    act,
+                    winrate: (selectedCard.winrates_by_act[act] || 0) * 100,
+                    picked: selectedCard.winrate_data?.[act]?.picked || 0,
+                    won: selectedCard.winrate_data?.[act]?.won || 0
+                }));
+            }, [selectedCard]);
+
             return React.createElement('div', { className: 'container' },
                 // Header
                 React.createElement('div', { className: 'header' },
@@ -228,7 +261,10 @@
                             )
                             : React.createElement(window.CardDetail, {
                                 selectedCard,
-                                chartData
+                                chartData,
+                                skipRateData,
+                                winRateData,
+                                baselineSkipData: data?.baseline_skip_data
                             })
                     )
                 )
