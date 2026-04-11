@@ -391,7 +391,7 @@ Examples:
 
     if uploaded > 0:
         print("\n✓ Upload successful!")
-        print(f"  View stats at: {args.server.replace(':8001', ':8000')}")
+        print(f"  View stats at: https://mbgg.up.railway.app")
 
 
 if __name__ == "__main__":
