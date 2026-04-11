@@ -29,7 +29,7 @@ from typing import List, Tuple, Optional
 # Platform-specific paths
 if sys.platform == "darwin":  # macOS
     BASE_PATH = Path.home() / "Library/Application Support/SlayTheSpire2"
-elif sys.platform == "win32":  # Windows
+elif sys.platform == "win32" or sys.platform.startswith("cygwin"):  # Windows or Cygwin
     appdata = os.getenv("APPDATA") or os.getenv("LOCALAPPDATA")
     if appdata:
         BASE_PATH = Path(appdata) / "SlayTheSpire2"
