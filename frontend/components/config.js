@@ -1,6 +1,19 @@
 // API configuration and constants
+// Auto-detect environment based on hostname
+function getApiBaseUrl() {
+    const hostname = window.location.hostname;
+
+    // If running on QA domain, use QA backend
+    if (hostname.includes('-qa.') || hostname.includes('qa-')) {
+        return 'https://mbgg-api-qa.up.railway.app';
+    }
+
+    // Default to production
+    return 'https://mbgg-api.up.railway.app';
+}
+
 window.AppConfig = {
-    API_BASE_URL: 'https://mbgg-api.up.railway.app',
+    API_BASE_URL: getApiBaseUrl(),
 
     CHARACTERS: [
         {
