@@ -264,20 +264,6 @@
             }, [selectedCard]);
 
             return React.createElement('div', { className: 'container' },
-                // FilterBar (sticky)
-                React.createElement(window.FilterBar, {
-                    selectedCharacter,
-                    setSelectedCharacter,
-                    selectedMode,
-                    setSelectedMode,
-                    selectedAscension,
-                    setSelectedAscension,
-                    selectedUser,
-                    setSelectedUser,
-                    usersList,
-                    usernameCache
-                }),
-
                 // Scrollable content wrapper
                 React.createElement('div', { className: 'scrollable-content' },
                     // Header
@@ -285,6 +271,20 @@
                         React.createElement('h1', null, 'STS2 Card Pick Rate Analyzer'),
                         React.createElement('div', { className: 'subtitle' }, 'Card pick rates by floor')
                     ),
+
+                    // FilterBar (sticky within scrollable content)
+                    React.createElement(window.FilterBar, {
+                        selectedCharacter,
+                        setSelectedCharacter,
+                        selectedMode,
+                        setSelectedMode,
+                        selectedAscension,
+                        setSelectedAscension,
+                        selectedUser,
+                        setSelectedUser,
+                        usersList,
+                        usernameCache
+                    }),
 
                     // MetadataBar
                     data && React.createElement(window.MetadataBar, { metadata: data.metadata }),

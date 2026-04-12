@@ -31,18 +31,6 @@ body {
     overflow: hidden;
 }
 
-.filters {
-    background: #1f2937;
-    padding: 12px 30px;
-    border-bottom: 2px solid #374151;
-    display: flex;
-    gap: 20px;
-    align-items: center;
-    flex-wrap: wrap;
-    flex-shrink: 0;
-    z-index: 100;
-}
-
 .scrollable-content {
     flex: 1;
     overflow-y: auto;
@@ -66,6 +54,20 @@ body {
 .header .subtitle {
     font-size: 14px;
     opacity: 0.9;
+}
+
+.filters {
+    background: #1f2937;
+    padding: 12px 30px;
+    border-bottom: 2px solid #374151;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
 }
 
 .filter-group {
