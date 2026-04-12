@@ -76,10 +76,39 @@
                     .catch(err => console.error('Error fetching users:', err));
             }, []);
 
+            // Track previous filter values to detect what changed
+            const prevFiltersRef = React.useRef({
+                character: selectedCharacter,
+                mode: selectedMode,
+                ascension: selectedAscension,
+                user: selectedUser
+            });
+
             useEffect(() => {
                 setLoading(true);
                 setError(null);
-                setSelectedCard(null);
+
+                // Only clear selected card if character/mode/ascension changed
+                // Preserve it if only user changed (allows comparing same card across users)
+                const prevFilters = prevFiltersRef.current;
+                const onlyUserChanged = (
+                    prevFilters.character === selectedCharacter &&
+                    prevFilters.mode === selectedMode &&
+                    prevFilters.ascension === selectedAscension &&
+                    prevFilters.user !== selectedUser
+                );
+
+                if (!onlyUserChanged) {
+                    setSelectedCard(null);
+                }
+
+                // Update ref for next time
+                prevFiltersRef.current = {
+                    character: selectedCharacter,
+                    mode: selectedMode,
+                    ascension: selectedAscension,
+                    user: selectedUser
+                };
 
                 // Build API request params
                 const params = new URLSearchParams({
@@ -107,6 +136,29 @@
                     .then(jsonData => {
                         setData(jsonData);
                         setLoading(false);
+
+                        // If a card was selected and only user changed, update the selected card with new data
+                        if (onlyUserChanged && selectedCard) {
+                            const newCardData = jsonData.cards[selectedCard.id];
+                            if (newCardData) {
+                                setSelectedCard({
+                                    id: selectedCard.id,
+                                    name: newCardData.summary.name || selectedCard.id.replace('CARD.', ''),
+                                    ...newCardData.summary,
+                                    rawData: newCardData.raw_data,
+                                    rawPickrates: newCardData.raw_pickrates,
+                                    smoothedPickrates: newCardData.smoothed_pickrates,
+                                    rawSkiprates: newCardData.raw_skiprates,
+                                    smoothedSkiprates: newCardData.smoothed_skiprates,
+                                    skip_data: newCardData.skip_data,
+                                    winrates_by_act: newCardData.winrates_by_act,
+                                    winrate_data: newCardData.winrate_data
+                                });
+                            } else {
+                                // Card doesn't exist in new data (e.g., user hasn't seen it), clear selection
+                                setSelectedCard(null);
+                            }
+                        }
                     })
                     .catch(error => {
                         console.error('Error loading data:', error);
