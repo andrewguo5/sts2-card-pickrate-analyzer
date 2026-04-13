@@ -9,9 +9,13 @@ const FilterBar = ({
     selectedUser,
     setSelectedUser,
     usersList,
-    usernameCache
+    usernameCache,
+    metadata
 }) => {
     const { CHARACTERS, MODES, ASCENSIONS } = window.AppConfig;
+
+    // Get filtered run count from metadata if available
+    const filteredRunCount = metadata?.runs_processed;
 
     return React.createElement('div', { className: 'filters' },
         // Character filter
@@ -74,12 +78,20 @@ const FilterBar = ({
                 onChange: (e) => setSelectedUser(e.target.value || null)
             },
                 React.createElement('option', { value: '' }, 'Global Stats (All Users)'),
-                usersList.map(user =>
-                    React.createElement('option', {
+                usersList.map(user => {
+                    const username = usernameCache[user.steam_id] || user.steam_id;
+                    const isSelected = selectedUser === user.steam_id;
+
+                    // Show filtered count if this user is selected and we have metadata
+                    const displayText = (isSelected && filteredRunCount !== undefined)
+                        ? `${username} (${filteredRunCount} runs, ${user.run_count} total)`
+                        : `${username} (${user.run_count} runs)`;
+
+                    return React.createElement('option', {
                         key: user.steam_id,
                         value: user.steam_id
-                    }, `${usernameCache[user.steam_id] || user.steam_id} (${user.run_count} runs)`)
-                )
+                    }, displayText);
+                })
             )
         )
     );
