@@ -45,6 +45,7 @@
             const [sortBy, setSortBy] = useState('offered');
             const [filterType, setFilterType] = useState('all');
             const [filterRarity, setFilterRarity] = useState('all');
+            const [activeTab, setActiveTab] = useState('pickrate');
 
             // Apply character theme colors
             useEffect(() => {
@@ -100,7 +101,9 @@
 
                 if (!onlyUserChanged) {
                     setSelectedCard(null);
+                    setActiveTab('pickrate'); // Reset to default tab when changing character/mode/ascension
                 }
+                // If only user changed, preserve both selected card AND active tab
 
                 // Update ref for next time
                 prevFiltersRef.current = {
@@ -323,7 +326,9 @@
                                 chartData,
                                 skipRateData,
                                 winRateData,
-                                baselineSkipData: data?.baseline_skip_data
+                                baselineSkipData: data?.baseline_skip_data,
+                                activeTab,
+                                setActiveTab
                             })
                     )
                 ) // End of content

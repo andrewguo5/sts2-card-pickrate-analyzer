@@ -1,7 +1,5 @@
 // CardDetail - Main panel displaying card statistics with tabs for different analyses
-const CardDetail = ({ selectedCard, chartData, skipRateData, winRateData, baselineSkipData }) => {
-    const [activeTab, setActiveTab] = React.useState('pickrate');
-
+const CardDetail = ({ selectedCard, chartData, skipRateData, winRateData, baselineSkipData, activeTab, setActiveTab }) => {
     if (!selectedCard) {
         return React.createElement('div', { className: 'empty-state' },
             React.createElement('div', { className: 'empty-state-icon' }, '📊'),
