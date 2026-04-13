@@ -42,6 +42,7 @@
             const [selectedUser, setSelectedUser] = useState(null); // null = global stats
             const [usersList, setUsersList] = useState([]);
             const [usernameCache, setUsernameCache] = useState({});
+            const [filteredRunCounts, setFilteredRunCounts] = useState({}); // steam_id -> filtered count
             const [sortBy, setSortBy] = useState('offered');
             const [filterType, setFilterType] = useState('all');
             const [filterRarity, setFilterRarity] = useState('all');
@@ -76,6 +77,20 @@
                     })
                     .catch(err => console.error('Error fetching users:', err));
             }, []);
+
+            // Fetch filtered run counts when character/mode/ascension changes
+            useEffect(() => {
+                const params = new URLSearchParams({
+                    character: selectedCharacter,
+                    mode: selectedMode,
+                    ascension: selectedAscension
+                });
+
+                fetch(`${API_BASE_URL}/api/analytics/users/filtered-counts?${params}`)
+                    .then(response => response.json())
+                    .then(counts => setFilteredRunCounts(counts))
+                    .catch(err => console.error('Error fetching filtered run counts:', err));
+            }, [selectedCharacter, selectedMode, selectedAscension]);
 
             // Track previous filter values to detect what changed
             const prevFiltersRef = React.useRef({
@@ -287,7 +302,7 @@
                         setSelectedUser,
                         usersList,
                         usernameCache,
-                        metadata: data?.metadata
+                        filteredRunCounts
                     }),
 
                     // MetadataBar

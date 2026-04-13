@@ -432,6 +432,56 @@ def get_users_list(db: Session = Depends(get_db)):
     ]
 
 
+@router.get("/users/filtered-counts")
+def get_users_filtered_counts(
+    character: str = Query(..., description="Character (e.g., 'regent', 'ironclad')"),
+    mode: str = Query(..., description="Mode: singleplayer, multiplayer, all"),
+    ascension: str = Query(..., description="Ascension: a10, a0-9, all"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get run counts for all users filtered by character/mode/ascension.
+
+    Returns:
+        Dictionary mapping steam_id to filtered run count
+    """
+    from sqlalchemy import func
+
+    # Convert short character name to full ID
+    character_upper = character.upper()
+    full_character = f"CHARACTER.{character_upper}"
+
+    if full_character not in CHARACTERS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid character: {character}"
+        )
+
+    # Parse filters
+    ascension_levels = parse_ascension_filter(ascension)
+    mode_criteria = parse_mode_filter(mode)
+
+    # Query for filtered run counts per user
+    results = db.query(
+        Run.steam_id,
+        func.count(Run.id).label('filtered_count')
+    ).filter(
+        Run.steam_id.isnot(None),
+        Run.character == full_character,
+        Run.ascension.in_(ascension_levels),
+        Run.num_players >= mode_criteria["min"],
+        Run.num_players <= mode_criteria["max"]
+    ).group_by(
+        Run.steam_id
+    ).all()
+
+    # Return as dictionary for easy lookup
+    return {
+        row.steam_id: row.filtered_count
+        for row in results
+    }
+
+
 @router.get("/user-stats", response_model=AnalyticsResponse)
 def get_user_stats(
     steam_id: str = Query(..., description="Steam ID"),
