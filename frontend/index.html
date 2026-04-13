@@ -290,7 +290,10 @@
                     }),
 
                     // MetadataBar
-                    data && React.createElement(window.MetadataBar, { metadata: data.metadata }),
+                    data && React.createElement(window.MetadataBar, {
+                        metadata: data.metadata,
+                        usernameCache: usernameCache
+                    }),
 
                     // Content area
                 React.createElement('div', { className: 'content' },

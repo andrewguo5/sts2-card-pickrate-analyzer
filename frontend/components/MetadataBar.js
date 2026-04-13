@@ -1,6 +1,13 @@
 // MetadataBar - Displays metadata about the current dataset
-const MetadataBar = ({ metadata }) => {
+const MetadataBar = ({ metadata, usernameCache }) => {
     if (!metadata) return null;
+
+    // Get username from cache if available, otherwise show steam ID
+    const getUserDisplay = (steamId) => {
+        if (!steamId) return null;
+        const username = usernameCache[steamId];
+        return username || steamId;
+    };
 
     return React.createElement('div', { className: 'metadata' },
         React.createElement('div', { className: 'metadata-item' },
@@ -26,8 +33,8 @@ const MetadataBar = ({ metadata }) => {
             React.createElement('span', { className: 'metadata-value' }, `b=${metadata.kernel_bandwidth}`)
         ),
         metadata.steam_id && React.createElement('div', { className: 'metadata-item' },
-            React.createElement('span', { className: 'metadata-label' }, 'Steam ID: '),
-            React.createElement('span', { className: 'metadata-value' }, metadata.steam_id)
+            React.createElement('span', { className: 'metadata-label' }, 'User: '),
+            React.createElement('span', { className: 'metadata-value' }, getUserDisplay(metadata.steam_id))
         )
     );
 };
