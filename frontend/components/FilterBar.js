@@ -77,10 +77,13 @@ const FilterBar = ({
                 React.createElement('option', { value: '' }, 'Global Stats (All Users)'),
                 usersList.map(user => {
                     const username = usernameCache[user.steam_id] || user.steam_id;
-                    const filteredCount = filteredRunCounts[user.steam_id];
 
-                    // Always show filtered count if available
-                    const displayText = filteredCount !== undefined
+                    // If filteredRunCounts is loaded (object exists), show filtered count
+                    // If user not in filteredRunCounts, they have 0 runs matching filters
+                    const hasLoadedFilteredCounts = Object.keys(filteredRunCounts).length > 0;
+                    const filteredCount = filteredRunCounts[user.steam_id] || 0;
+
+                    const displayText = hasLoadedFilteredCounts
                         ? `${username} (${filteredCount} runs, ${user.run_count} total)`
                         : `${username} (${user.run_count} runs)`;
 
