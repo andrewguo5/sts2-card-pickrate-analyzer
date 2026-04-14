@@ -1,8 +1,9 @@
 // WinRateTab - Win rate analysis by act
 const WinRateTab = ({ selectedCard, winRateData }) => {
-    // Calculate overall win rate across all acts
-    const totalPicked = Object.values(selectedCard.winrate_data || {}).reduce((sum, counts) => sum + counts.picked, 0);
-    const totalWon = Object.values(selectedCard.winrate_data || {}).reduce((sum, counts) => sum + counts.won, 0);
+    // Get overall win rate (runs won where card picked / runs where card picked)
+    const overallData = selectedCard.winrate_data?.overall || { picked: 0, won: 0 };
+    const totalPicked = overallData.picked;
+    const totalWon = overallData.won;
     const overallWinRate = totalPicked > 0 ? (totalWon / totalPicked) : 0;
 
     return React.createElement(React.Fragment, null,
@@ -15,11 +16,11 @@ const WinRateTab = ({ selectedCard, winRateData }) => {
                 )
             ),
             React.createElement('div', { className: 'stat-card' },
-                React.createElement('div', { className: 'stat-label' }, 'Times Picked'),
+                React.createElement('div', { className: 'stat-label' }, 'Runs with Card'),
                 React.createElement('div', { className: 'stat-value' }, totalPicked)
             ),
             React.createElement('div', { className: 'stat-card' },
-                React.createElement('div', { className: 'stat-label' }, 'Wins with Card'),
+                React.createElement('div', { className: 'stat-label' }, 'Runs Won'),
                 React.createElement('div', { className: 'stat-value' }, totalWon)
             )
         ),

@@ -271,7 +271,11 @@
             const winRateData = useMemo(() => {
                 if (!selectedCard || !selectedCard.winrates_by_act) return [];
 
-                const acts = Object.keys(selectedCard.winrates_by_act).map(Number).sort((a, b) => a - b);
+                // Filter out "overall" key and only include numeric act keys
+                const acts = Object.keys(selectedCard.winrates_by_act)
+                    .filter(key => key !== 'overall')
+                    .map(Number)
+                    .sort((a, b) => a - b);
 
                 return acts.map(act => ({
                     act,

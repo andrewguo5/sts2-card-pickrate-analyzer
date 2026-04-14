@@ -80,7 +80,11 @@ class CardPickRateAnalyzer:
         map_history = run_data.get('map_point_history', [])
         victory = run_data.get('win', False)
 
-        # Track which cards were picked in each act of this run (to avoid double-counting wins)
+        # Track which cards were picked in this run (to avoid double-counting)
+        # Format: set of card_ids picked at least once
+        cards_picked_this_run = set()
+
+        # Also track which cards were picked in each act (for act-specific win rates)
         # Format: {card_id: set of acts where it was picked}
         cards_picked_per_act_this_run = defaultdict(set)
 
@@ -143,10 +147,17 @@ class CardPickRateAnalyzer:
 
                     # Track when cards are picked (for win rate calculation later)
                     if was_picked:
+                        cards_picked_this_run.add(card_id)
                         cards_picked_per_act_this_run[card_id].add(act_number)
 
         # After processing all acts in this run, update win rate data
-        # Only count each (card, act) combination once per run
+        # Overall win rate: count each card once per run (regardless of how many times picked)
+        for card_id in cards_picked_this_run:
+            self.winrate_data[card_id]["overall"]["picked"] += 1
+            if victory:
+                self.winrate_data[card_id]["overall"]["won"] += 1
+
+        # Act-specific win rates: count each (card, act) combination once per run
         for card_id, acts in cards_picked_per_act_this_run.items():
             for act_number in acts:
                 self.winrate_data[card_id][act_number]["picked"] += 1
