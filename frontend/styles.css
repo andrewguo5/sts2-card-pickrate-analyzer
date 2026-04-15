@@ -402,3 +402,12 @@ tr:hover {
         transform: translateX(0);
     }
 }
+
+/* Info icon - prevent uppercase transformation */
+.info-icon-wrapper {
+    text-transform: none !important;
+}
+
+.info-tooltip {
+    text-transform: none !important;
+}
