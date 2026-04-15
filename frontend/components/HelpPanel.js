@@ -1,88 +1,113 @@
-// HelpPanel - Collapsible help section with full glossary
-const HelpPanel = () => {
-    const [isOpen, setIsOpen] = React.useState(false);
+// HelpPanel - Slide-out glossary panel from the right
+const HelpPanel = ({ isOpen, onClose }) => {
     const glossary = window.Glossary || {};
 
-    return React.createElement('div', {
-        className: 'help-panel',
-        style: {
-            backgroundColor: '#f9fafb',
-            borderBottom: '1px solid #e5e7eb',
-            overflow: 'hidden'
-        }
-    },
-        // Toggle button
-        React.createElement('button', {
-            onClick: () => setIsOpen(!isOpen),
-            style: {
-                width: '100%',
-                padding: '12px 30px',
-                backgroundColor: '#f3f4f6',
-                border: 'none',
-                borderBottom: '1px solid #e5e7eb',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                fontSize: '14px',
-                fontWeight: '600',
-                color: '#374151',
-                transition: 'background-color 0.2s'
-            },
-            onMouseEnter: (e) => e.currentTarget.style.backgroundColor = '#e5e7eb',
-            onMouseLeave: (e) => e.currentTarget.style.backgroundColor = '#f3f4f6'
-        },
-            React.createElement('span', null, '❓ Help & Glossary'),
-            React.createElement('span', { style: { fontSize: '12px' } }, isOpen ? '▲ Hide' : '▼ Show')
-        ),
+    // Don't render anything if not open
+    if (!isOpen) return null;
 
-        // Content (only shown when open)
-        isOpen && React.createElement('div', {
+    return React.createElement(React.Fragment, null,
+        // Backdrop overlay
+        React.createElement('div', {
             style: {
-                padding: '20px 30px',
-                maxHeight: '400px',
-                overflowY: 'auto'
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                zIndex: 1000,
+                animation: 'fadeIn 0.2s'
+            },
+            onClick: onClose
+        }),
+
+        // Side panel
+        React.createElement('div', {
+            className: 'glossary-panel',
+            style: {
+                position: 'fixed',
+                top: 0,
+                right: 0,
+                width: '500px',
+                maxWidth: '90vw',
+                height: '100vh',
+                backgroundColor: 'white',
+                boxShadow: '-4px 0 12px rgba(0, 0, 0, 0.15)',
+                zIndex: 1001,
+                display: 'flex',
+                flexDirection: 'column',
+                animation: 'slideInRight 0.3s'
             }
         },
-            React.createElement('h3', {
-                style: {
-                    fontSize: '16px',
-                    fontWeight: '700',
-                    color: '#1f2937',
-                    marginBottom: '16px'
-                }
-            }, 'Analytics Glossary'),
-
-            // Render all glossary entries
+            // Header
             React.createElement('div', {
                 style: {
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                    gap: '20px'
+                    padding: '20px 24px',
+                    borderBottom: '2px solid #e5e7eb',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    backgroundColor: '#f9fafb'
+                }
+            },
+                React.createElement('h2', {
+                    style: {
+                        fontSize: '20px',
+                        fontWeight: '700',
+                        color: '#1f2937',
+                        margin: 0
+                    }
+                }, '📖 Glossary'),
+                React.createElement('button', {
+                    onClick: onClose,
+                    style: {
+                        width: '32px',
+                        height: '32px',
+                        border: 'none',
+                        backgroundColor: '#e5e7eb',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '18px',
+                        color: '#374151',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'background-color 0.2s'
+                    },
+                    onMouseEnter: (e) => e.currentTarget.style.backgroundColor = '#d1d5db',
+                    onMouseLeave: (e) => e.currentTarget.style.backgroundColor = '#e5e7eb'
+                }, '×')
+            ),
+
+            // Content
+            React.createElement('div', {
+                style: {
+                    flex: 1,
+                    overflowY: 'auto',
+                    padding: '24px'
                 }
             },
                 Object.entries(glossary).map(([key, entry]) =>
                     React.createElement('div', {
                         key: key,
                         style: {
-                            backgroundColor: 'white',
-                            padding: '14px',
-                            borderRadius: '8px',
-                            border: '1px solid #e5e7eb'
+                            marginBottom: '24px',
+                            paddingBottom: '24px',
+                            borderBottom: '1px solid #e5e7eb'
                         }
                     },
                         React.createElement('div', {
                             style: {
-                                fontSize: '14px',
+                                fontSize: '16px',
                                 fontWeight: '700',
                                 color: '#1f2937',
-                                marginBottom: '6px'
+                                marginBottom: '8px'
                             }
                         }, entry.title),
                         React.createElement('div', {
                             style: {
-                                fontSize: '13px',
-                                lineHeight: '1.6',
+                                fontSize: '14px',
+                                lineHeight: '1.7',
                                 color: '#4b5563',
                                 whiteSpace: 'pre-line'
                             }

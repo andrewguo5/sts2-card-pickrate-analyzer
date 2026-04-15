@@ -50,6 +50,7 @@
             const [filterType, setFilterType] = useState('all');
             const [filterRarity, setFilterRarity] = useState('all');
             const [activeTab, setActiveTab] = useState('pickrate');
+            const [isGlossaryOpen, setIsGlossaryOpen] = useState(false);
 
             // Apply character theme colors
             useEffect(() => {
@@ -297,9 +298,6 @@
                         React.createElement('div', { className: 'subtitle' }, 'Card pick rates by floor')
                     ),
 
-                    // HelpPanel (collapsible)
-                    React.createElement(window.HelpPanel),
-
                     // FilterBar (sticky within scrollable content)
                     React.createElement(window.FilterBar, {
                         selectedCharacter,
@@ -312,7 +310,8 @@
                         setSelectedUser,
                         usersList,
                         usernameCache,
-                        filteredRunCounts
+                        filteredRunCounts,
+                        onOpenGlossary: () => setIsGlossaryOpen(true)
                     }),
 
                     // MetadataBar
@@ -361,7 +360,13 @@
                             })
                     )
                 ) // End of content
-                ) // End of scrollable-content
+                ) // End of scrollable-content,
+
+                // Glossary side panel (rendered outside scrollable content)
+                React.createElement(window.HelpPanel, {
+                    isOpen: isGlossaryOpen,
+                    onClose: () => setIsGlossaryOpen(false)
+                })
             );
         }
 

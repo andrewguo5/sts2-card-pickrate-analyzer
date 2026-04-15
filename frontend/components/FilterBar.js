@@ -10,7 +10,8 @@ const FilterBar = ({
     setSelectedUser,
     usersList,
     usernameCache,
-    filteredRunCounts
+    filteredRunCounts,
+    onOpenGlossary
 }) => {
     const { CHARACTERS, MODES, ASCENSIONS } = window.AppConfig;
 
@@ -93,6 +94,38 @@ const FilterBar = ({
                     }, displayText);
                 })
             )
+        ),
+
+        // Glossary button (on the right)
+        React.createElement('button', {
+            className: 'glossary-button',
+            onClick: onOpenGlossary,
+            style: {
+                marginLeft: 'auto',
+                padding: '8px 16px',
+                backgroundColor: '#374151',
+                color: 'white',
+                border: '2px solid #4b5563',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s'
+            },
+            onMouseEnter: (e) => {
+                e.currentTarget.style.backgroundColor = '#4b5563';
+                e.currentTarget.style.borderColor = '#6b7280';
+            },
+            onMouseLeave: (e) => {
+                e.currentTarget.style.backgroundColor = '#374151';
+                e.currentTarget.style.borderColor = '#4b5563';
+            }
+        },
+            React.createElement('span', { style: { fontSize: '16px' } }, '?'),
+            React.createElement('span', null, 'Glossary')
         )
     );
 };
