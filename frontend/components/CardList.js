@@ -34,6 +34,8 @@ const CardList = ({
             },
                 React.createElement('option', { value: 'offered' }, 'Sort: Most Offered'),
                 React.createElement('option', { value: 'pickrate' }, 'Sort: Pick Rate %'),
+                React.createElement('option', { value: 'winrate' }, 'Sort: Win Rate %'),
+                React.createElement('option', { value: 'skiprate' }, 'Sort: Least Skipped'),
                 React.createElement('option', { value: 'alphabetical' }, 'Sort: Alphabetical')
             ),
 
