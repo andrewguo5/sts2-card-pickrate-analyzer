@@ -113,6 +113,12 @@ class CardPickRateAnalyzer:
                 # Check if all cards in this offer were skipped
                 all_skipped = all(not choice.get('was_picked', False) for choice in card_choices)
 
+                # Track baseline skip data (exclude shops)
+                if not is_shop:
+                    self.baseline_skip_data[floor]["total_offers"] += 1
+                    if all_skipped:
+                        self.baseline_skip_data[floor]["total_skips"] += 1
+
                 # Process each card in the offer
                 for choice in card_choices:
                     card_info = choice.get('card', {})
@@ -134,16 +140,10 @@ class CardPickRateAnalyzer:
                         if was_picked:
                             self.raw_data[card_id][floor]["picked"] += 1
 
-                        # Track skip rate data (card-specific: was this specific card skipped?)
+                        # Track skip rate data
                         self.skip_data[card_id][floor]["offered"] += 1
                         if all_skipped:
                             self.skip_data[card_id][floor]["skipped"] += 1
-
-                        # Track baseline skip data (average across all cards)
-                        # Baseline counts every individual card offer, not just encounters
-                        self.baseline_skip_data[floor]["total_offers"] += 1
-                        if not was_picked:
-                            self.baseline_skip_data[floor]["total_skips"] += 1
 
                     # Track when cards are picked (for win rate calculation later)
                     if was_picked:
