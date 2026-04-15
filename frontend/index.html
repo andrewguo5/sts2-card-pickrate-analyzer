@@ -234,6 +234,23 @@
                         return b.total_offered - a.total_offered;
                     } else if (sortBy === 'pickrate') {
                         return b.overall_pickrate - a.overall_pickrate;
+                    } else if (sortBy === 'winrate') {
+                        // Sort by overall win rate (highest first)
+                        const aWinRate = a.winrates_by_act?.overall || 0;
+                        const bWinRate = b.winrates_by_act?.overall || 0;
+                        return bWinRate - aWinRate;
+                    } else if (sortBy === 'skiprate') {
+                        // Sort by skip rate (least skipped first = lowest skip rate first)
+                        // Calculate overall skip rate from skip_data
+                        const aSkipped = Object.values(a.skip_data || {}).reduce((sum, data) => sum + (data.skipped || 0), 0);
+                        const aOffered = Object.values(a.skip_data || {}).reduce((sum, data) => sum + (data.offered || 0), 0);
+                        const aSkipRate = aOffered > 0 ? aSkipped / aOffered : 1;
+
+                        const bSkipped = Object.values(b.skip_data || {}).reduce((sum, data) => sum + (data.skipped || 0), 0);
+                        const bOffered = Object.values(b.skip_data || {}).reduce((sum, data) => sum + (data.offered || 0), 0);
+                        const bSkipRate = bOffered > 0 ? bSkipped / bOffered : 1;
+
+                        return aSkipRate - bSkipRate; // Ascending order (least skipped first)
                     } else if (sortBy === 'alphabetical') {
                         return a.name.localeCompare(b.name);
                     }

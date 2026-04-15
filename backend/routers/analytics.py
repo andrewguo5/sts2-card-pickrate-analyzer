@@ -190,7 +190,8 @@ def compute_and_cache_analytics(
 
     result = {
         "metadata": metadata,
-        "cards": pickrate_data["cards"]
+        "cards": pickrate_data["cards"],
+        "baseline_skip_data": pickrate_data.get("baseline_skip_data", {})
     }
 
     # Cache the result
@@ -527,7 +528,8 @@ def get_user_stats(
 
     result = {
         "metadata": metadata,
-        "cards": pickrate_data["cards"]
+        "cards": pickrate_data["cards"],
+        "baseline_skip_data": pickrate_data.get("baseline_skip_data", {})
     }
 
     return enrich_with_metadata(result)
