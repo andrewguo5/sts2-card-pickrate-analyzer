@@ -82,6 +82,9 @@ const SkipRateChart = ({ skipRateData, baselineSkipData }) => {
                             text: 'Floor',
                             font: { size: 14, weight: 'bold' }
                         },
+                        type: 'linear',
+                        min: 2,
+                        max: 46,
                         grid: { color: 'rgba(0, 0, 0, 0.05)' }
                     },
                     y: {
