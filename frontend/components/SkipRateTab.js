@@ -9,7 +9,10 @@ const SkipRateTab = ({ selectedCard, skipRateData, baselineSkipData }) => {
         // Summary stats grid
         React.createElement('div', { className: 'summary-stats' },
             React.createElement('div', { className: 'stat-card' },
-                React.createElement('div', { className: 'stat-label' }, 'Overall Skip Rate'),
+                React.createElement('div', { className: 'stat-label' },
+                    'Overall Skip Rate',
+                    React.createElement(window.InfoIcon, { term: 'skip_rate' })
+                ),
                 React.createElement('div', { className: 'stat-value' },
                     `${(overallSkipRate * 100).toFixed(1)}%`
                 )
@@ -47,7 +50,10 @@ const SkipRateTab = ({ selectedCard, skipRateData, baselineSkipData }) => {
                                     React.createElement('th', null, 'Skipped'),
                                     React.createElement('th', null, 'Skip Rate (Raw)'),
                                     React.createElement('th', null, 'Skip Rate (Smoothed)'),
-                                    React.createElement('th', null, 'Baseline Skip Rate')
+                                    React.createElement('th', null,
+                                        'Baseline Skip Rate',
+                                        React.createElement(window.InfoIcon, { term: 'baseline_skip_rate' })
+                                    )
                                 )
                             ),
                             React.createElement('tbody', null,
