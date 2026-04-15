@@ -10,10 +10,7 @@ const WinRateTab = ({ selectedCard, winRateData }) => {
         // Summary stats grid
         React.createElement('div', { className: 'summary-stats' },
             React.createElement('div', { className: 'stat-card' },
-                React.createElement('div', { className: 'stat-label' },
-                    'Overall Win Rate',
-                    React.createElement(window.InfoIcon, { term: 'win_rate' })
-                ),
+                React.createElement('div', { className: 'stat-label' }, 'Overall Win Rate'),
                 React.createElement('div', { className: 'stat-value' },
                     `${(overallWinRate * 100).toFixed(1)}%`
                 )
