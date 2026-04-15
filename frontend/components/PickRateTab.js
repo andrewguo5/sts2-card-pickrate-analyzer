@@ -4,7 +4,10 @@ const PickRateTab = ({ selectedCard, chartData }) => {
         // Summary stats grid
         React.createElement('div', { className: 'summary-stats' },
             React.createElement('div', { className: 'stat-card' },
-                React.createElement('div', { className: 'stat-label' }, 'Overall Pick Rate'),
+                React.createElement('div', { className: 'stat-label' },
+                    'Overall Pick Rate',
+                    React.createElement(window.InfoIcon, { term: 'pick_rate' })
+                ),
                 React.createElement('div', { className: 'stat-value' },
                     `${(selectedCard.overall_pickrate * 100).toFixed(1)}%`
                 )
@@ -21,7 +24,10 @@ const PickRateTab = ({ selectedCard, chartData }) => {
 
         // Chart section
         React.createElement('div', { className: 'chart-section' },
-            React.createElement('h3', { className: 'chart-title' }, 'Pick Rate by Floor (Kernel Smoothed)'),
+            React.createElement('h3', { className: 'chart-title' },
+                'Pick Rate by Floor (Kernel Smoothed)',
+                React.createElement(window.InfoIcon, { term: 'kernel_smoothing' })
+            ),
             React.createElement('div', { className: 'chart-container' },
                 chartData && chartData.length > 0
                     ? React.createElement(window.ChartComponent, { chartData })

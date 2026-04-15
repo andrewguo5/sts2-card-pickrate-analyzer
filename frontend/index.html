@@ -11,7 +11,10 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
 
     <!-- Component imports -->
+    <script src="glossary.js"></script>
     <script src="components/config.js"></script>
+    <script src="components/InfoIcon.js"></script>
+    <script src="components/HelpPanel.js"></script>
     <script src="components/ChartComponent.js"></script>
     <script src="components/SkipRateChart.js"></script>
     <script src="components/WinRateChart.js"></script>
@@ -310,6 +313,9 @@
                         React.createElement('h1', null, 'STS2 Card Pick Rate Analyzer'),
                         React.createElement('div', { className: 'subtitle' }, 'Card pick rates by floor')
                     ),
+
+                    // HelpPanel (collapsible)
+                    React.createElement(window.HelpPanel),
 
                     // FilterBar (sticky within scrollable content)
                     React.createElement(window.FilterBar, {
