@@ -29,7 +29,8 @@ const InfoIcon = ({ term }) => {
                 textAlign: 'center',
                 lineHeight: '16px',
                 cursor: 'help',
-                userSelect: 'none'
+                userSelect: 'none',
+                textTransform: 'none'
             }
         }, 'i'),
 
@@ -53,11 +54,12 @@ const InfoIcon = ({ term }) => {
                 boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
                 zIndex: 1000,
                 pointerEvents: 'none',
-                whiteSpace: 'normal'
+                whiteSpace: 'normal',
+                textTransform: 'none'
             }
         },
-            React.createElement('div', { style: { fontWeight: '600', marginBottom: '4px' } }, entry.title),
-            React.createElement('div', null, entry.short),
+            React.createElement('div', { style: { fontWeight: '600', marginBottom: '4px', textTransform: 'none' } }, entry.title),
+            React.createElement('div', { style: { textTransform: 'none' } }, entry.short),
             // Arrow
             React.createElement('div', {
                 style: {
