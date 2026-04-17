@@ -51,7 +51,7 @@ const VisualizationTab = ({
         // Description section
         React.createElement('div', { className: 'visualization-description', style: {
             padding: '20px',
-            marginBottom: '10px',
+            marginBottom: '20px',
             backgroundColor: 'rgba(255, 255, 255, 0.05)',
             borderRadius: '8px',
             border: '1px solid rgba(255, 255, 255, 0.1)'
@@ -65,119 +65,167 @@ const VisualizationTab = ({
             )
         ),
 
-        // Filter controls
+        // Main content area with sidebar and chart
         React.createElement('div', {
             style: {
                 display: 'flex',
-                gap: '15px',
-                marginBottom: '10px',
-                padding: '15px',
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                borderRadius: '8px',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                alignItems: 'center'
+                gap: '20px',
+                alignItems: 'flex-start'
             }
         },
-            React.createElement('span', { style: { fontWeight: '600', fontSize: '14px' } }, 'Filters:'),
-
-            // Type filter
-            React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
-                React.createElement('label', { style: { fontSize: '14px', fontWeight: '500' } }, 'Type:'),
-                React.createElement('select', {
-                    value: filterType,
-                    onChange: (e) => setFilterType(e.target.value),
-                    style: {
-                        padding: '6px 10px',
-                        borderRadius: '4px',
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        color: 'inherit',
-                        fontSize: '13px',
-                        cursor: 'pointer'
-                    }
-                },
-                    React.createElement('option', { value: 'all' }, 'All Types'),
-                    React.createElement('option', { value: 'Attack' }, 'Attack'),
-                    React.createElement('option', { value: 'Skill' }, 'Skill'),
-                    React.createElement('option', { value: 'Power' }, 'Power'),
-                    React.createElement('option', { value: 'Curse' }, 'Curse'),
-                    React.createElement('option', { value: 'Status' }, 'Status')
-                )
-            ),
-
-            // Rarity filter
-            React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
-                React.createElement('label', { style: { fontSize: '14px', fontWeight: '500' } }, 'Rarity:'),
-                React.createElement('select', {
-                    value: filterRarity,
-                    onChange: (e) => setFilterRarity(e.target.value),
-                    style: {
-                        padding: '6px 10px',
-                        borderRadius: '4px',
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        color: 'inherit',
-                        fontSize: '13px',
-                        cursor: 'pointer'
-                    }
-                },
-                    React.createElement('option', { value: 'all' }, 'All Rarities'),
-                    React.createElement('option', { value: 'Common' }, 'Common'),
-                    React.createElement('option', { value: 'Uncommon' }, 'Uncommon'),
-                    React.createElement('option', { value: 'Rare' }, 'Rare')
-                )
-            ),
-
-            // Cost filter
-            React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
-                React.createElement('label', { style: { fontSize: '14px', fontWeight: '500' } }, 'Cost:'),
-                React.createElement('select', {
-                    value: filterCost,
-                    onChange: (e) => setFilterCost(e.target.value),
-                    style: {
-                        padding: '6px 10px',
-                        borderRadius: '4px',
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        color: 'inherit',
-                        fontSize: '13px',
-                        cursor: 'pointer'
-                    }
-                },
-                    React.createElement('option', { value: 'all' }, 'All Costs'),
-                    React.createElement('option', { value: '0' }, '0'),
-                    React.createElement('option', { value: '1' }, '1'),
-                    React.createElement('option', { value: '2' }, '2'),
-                    React.createElement('option', { value: '3+' }, '3+')
-                )
-            ),
-
-            // Card count
-            coordinateData && coordinateData.coordinates && React.createElement('div', {
+            // Filter sidebar (left)
+            React.createElement('div', {
                 style: {
-                    marginLeft: 'auto',
-                    fontSize: '13px',
-                    color: 'rgba(255, 255, 255, 0.7)'
+                    width: '200px',
+                    flexShrink: 0,
+                    padding: '20px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255, 255, 255, 0.1)'
                 }
             },
-                `Showing ${Object.keys(filteredCoordinateData.coordinates).length} of ${Object.keys(coordinateData.coordinates).length} cards`
-            )
-        ),
+                React.createElement('h4', { style: { marginTop: 0, marginBottom: '15px', fontSize: '16px' } }, 'Filters'),
 
-        // Scatter plot
-        React.createElement('div', {
-            className: 'chart-section',
-            style: { height: '600px' }
-        },
-            coordinateData
-                ? React.createElement(window.CardScatterPlot, {
-                    coordinateData: filteredCoordinateData,
-                    onCardClick,
-                    selectedCardId
-                })
-                : React.createElement('div', { className: 'loading', style: { padding: '40px', textAlign: 'center' } },
-                    'Loading coordinate data...'
+                // Type filter
+                React.createElement('div', { style: { marginBottom: '15px' } },
+                    React.createElement('label', {
+                        style: {
+                            display: 'block',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            marginBottom: '6px'
+                        }
+                    }, 'Type'),
+                    React.createElement('select', {
+                        value: filterType,
+                        onChange: (e) => setFilterType(e.target.value),
+                        style: {
+                            width: '100%',
+                            padding: '8px',
+                            borderRadius: '4px',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                            color: 'inherit',
+                            fontSize: '13px',
+                            cursor: 'pointer'
+                        }
+                    },
+                        React.createElement('option', { value: 'all' }, 'All Types'),
+                        React.createElement('option', { value: 'Attack' }, 'Attack'),
+                        React.createElement('option', { value: 'Skill' }, 'Skill'),
+                        React.createElement('option', { value: 'Power' }, 'Power'),
+                        React.createElement('option', { value: 'Curse' }, 'Curse'),
+                        React.createElement('option', { value: 'Status' }, 'Status')
+                    )
+                ),
+
+                // Rarity filter
+                React.createElement('div', { style: { marginBottom: '15px' } },
+                    React.createElement('label', {
+                        style: {
+                            display: 'block',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            marginBottom: '6px'
+                        }
+                    }, 'Rarity'),
+                    React.createElement('select', {
+                        value: filterRarity,
+                        onChange: (e) => setFilterRarity(e.target.value),
+                        style: {
+                            width: '100%',
+                            padding: '8px',
+                            borderRadius: '4px',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                            color: 'inherit',
+                            fontSize: '13px',
+                            cursor: 'pointer'
+                        }
+                    },
+                        React.createElement('option', { value: 'all' }, 'All Rarities'),
+                        React.createElement('option', { value: 'Common' }, 'Common'),
+                        React.createElement('option', { value: 'Uncommon' }, 'Uncommon'),
+                        React.createElement('option', { value: 'Rare' }, 'Rare')
+                    )
+                ),
+
+                // Cost filter
+                React.createElement('div', { style: { marginBottom: '15px' } },
+                    React.createElement('label', {
+                        style: {
+                            display: 'block',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            marginBottom: '6px'
+                        }
+                    }, 'Cost'),
+                    React.createElement('select', {
+                        value: filterCost,
+                        onChange: (e) => setFilterCost(e.target.value),
+                        style: {
+                            width: '100%',
+                            padding: '8px',
+                            borderRadius: '4px',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                            color: 'inherit',
+                            fontSize: '13px',
+                            cursor: 'pointer'
+                        }
+                    },
+                        React.createElement('option', { value: 'all' }, 'All Costs'),
+                        React.createElement('option', { value: '0' }, '0'),
+                        React.createElement('option', { value: '1' }, '1'),
+                        React.createElement('option', { value: '2' }, '2'),
+                        React.createElement('option', { value: '3+' }, '3+')
+                    )
+                ),
+
+                // Card count
+                coordinateData && coordinateData.coordinates && React.createElement('div', {
+                    style: {
+                        marginTop: '20px',
+                        paddingTop: '15px',
+                        borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                        fontSize: '13px',
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        textAlign: 'center'
+                    }
+                },
+                    React.createElement('div', null, `Showing ${Object.keys(filteredCoordinateData.coordinates).length}`),
+                    React.createElement('div', null, `of ${Object.keys(coordinateData.coordinates).length} cards`)
                 )
+            ),
+
+            // Scatter plot (right)
+            React.createElement('div', {
+                style: {
+                    flex: 1,
+                    minWidth: 0
+                }
+            },
+                React.createElement('div', {
+                    className: 'chart-section',
+                    style: {
+                        height: '600px',
+                        padding: '20px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(255, 255, 255, 0.15)'
+                    }
+                },
+                    coordinateData
+                        ? React.createElement(window.CardScatterPlot, {
+                            coordinateData: filteredCoordinateData,
+                            onCardClick,
+                            selectedCardId
+                        })
+                        : React.createElement('div', { className: 'loading', style: { padding: '40px', textAlign: 'center' } },
+                            'Loading coordinate data...'
+                        )
+                )
+            )
         )
     );
 };
