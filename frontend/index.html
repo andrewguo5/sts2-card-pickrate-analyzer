@@ -24,6 +24,8 @@
     <script src="components/PickRateTab.js"></script>
     <script src="components/SkipRateTab.js"></script>
     <script src="components/WinRateTab.js"></script>
+    <script src="components/CardScatterPlot.js"></script>
+    <script src="components/VisualizationTab.js"></script>
     <script src="components/CardDetail.js"></script>
 </head>
 <body>
@@ -51,6 +53,9 @@
             const [filterRarity, setFilterRarity] = useState('all');
             const [activeTab, setActiveTab] = useState('pickrate');
             const [isGlossaryOpen, setIsGlossaryOpen] = useState(false);
+            const [coordinateData, setCoordinateData] = useState(null);
+            const [loadingCoordinates, setLoadingCoordinates] = useState(false);
+            const [viewMode, setViewMode] = useState('table'); // 'table' or 'visualization'
 
             // Apply character theme colors
             useEffect(() => {
@@ -95,6 +100,33 @@
                     .then(counts => setFilteredRunCounts(counts))
                     .catch(err => console.error('Error fetching filtered run counts:', err));
             }, [selectedCharacter, selectedMode, selectedAscension]);
+
+            // Fetch coordinate data when filters change
+            useEffect(() => {
+                setLoadingCoordinates(true);
+
+                const params = new URLSearchParams({
+                    character: selectedCharacter,
+                    mode: selectedMode,
+                    ascension: selectedAscension
+                });
+
+                if (selectedUser) {
+                    params.append('steam_id', selectedUser);
+                }
+
+                fetch(`${API_BASE_URL}/api/analytics/card-coordinates?${params}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        setCoordinateData(data);
+                        setLoadingCoordinates(false);
+                    })
+                    .catch(err => {
+                        console.error('Error fetching coordinate data:', err);
+                        setCoordinateData(null);
+                        setLoadingCoordinates(false);
+                    });
+            }, [selectedCharacter, selectedMode, selectedAscension, selectedUser]);
 
             // Track previous filter values to detect what changed
             const prevFiltersRef = React.useRef({
@@ -337,8 +369,33 @@
                         usernameCache: usernameCache
                     }),
 
+                    // View mode switcher
+                    React.createElement('div', {
+                        className: 'view-mode-switcher',
+                        style: {
+                            display: 'flex',
+                            justifyContent: 'center',
+                            gap: '10px',
+                            margin: '20px 0',
+                            padding: '10px',
+                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                            borderRadius: '8px'
+                        }
+                    },
+                        React.createElement('button', {
+                            className: viewMode === 'table' ? 'tab-button active' : 'tab-button',
+                            onClick: () => setViewMode('table'),
+                            style: { minWidth: '150px' }
+                        }, '📊 Table View'),
+                        React.createElement('button', {
+                            className: viewMode === 'visualization' ? 'tab-button active' : 'tab-button',
+                            onClick: () => setViewMode('visualization'),
+                            style: { minWidth: '150px' }
+                        }, '🎯 2D Visualization')
+                    ),
+
                     // Content area
-                React.createElement('div', { className: 'content' },
+                viewMode === 'table' ? React.createElement('div', { className: 'content' },
                     // CardList sidebar
                     loading || error || !data
                         ? React.createElement('div', { className: 'sidebar' },
@@ -376,7 +433,42 @@
                                 setActiveTab
                             })
                     )
-                ) // End of content
+                ) // End of table content
+                : React.createElement('div', { className: 'visualization-view', style: { padding: '20px' } },
+                    // Visualization view
+                    loadingCoordinates
+                        ? React.createElement('div', { className: 'loading', style: { padding: '40px', textAlign: 'center' } },
+                            'Loading visualization...'
+                        )
+                        : React.createElement(window.VisualizationTab, {
+                            coordinateData,
+                            onCardClick: (cardId) => {
+                                // Switch to table view and select the card
+                                setViewMode('table');
+                                if (data && data.cards && data.cards[cardId]) {
+                                    const cardData = data.cards[cardId];
+                                    setSelectedCard({
+                                        id: cardId,
+                                        name: cardData.summary.name || cardId.replace('CARD.', ''),
+                                        ...cardData.summary,
+                                        rawData: cardData.raw_data,
+                                        rawPickrates: cardData.raw_pickrates,
+                                        smoothedPickrates: cardData.smoothed_pickrates,
+                                        rawSkiprates: cardData.raw_skiprates,
+                                        smoothedSkiprates: cardData.smoothed_skiprates,
+                                        skip_data: cardData.skip_data,
+                                        winrates_by_act: cardData.winrates_by_act,
+                                        winrate_data: cardData.winrate_data
+                                    });
+                                }
+                            },
+                            selectedCardId: selectedCard?.id,
+                            character: selectedCharacter,
+                            mode: selectedMode,
+                            ascension: selectedAscension,
+                            selectedUser
+                        })
+                ) // End of visualization content
                 ), // End of scrollable-content
 
                 // Glossary side panel (rendered outside scrollable content)

@@ -22,6 +22,32 @@ body {
     padding: 0;
 }
 
+/* Scatter plot container */
+.scatter-plot-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.scatter-plot-container canvas {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+/* Visualization view */
+.visualization-view {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.visualization-description {
+    line-height: 1.6;
+}
+
+.visualization-description strong {
+    color: var(--char-primary);
+}
+
 .container {
     width: 100%;
     height: 100vh;

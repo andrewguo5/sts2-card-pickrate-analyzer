@@ -54,6 +54,17 @@ window.Glossary = {
         full: "The number of times a card shows up in a card reward screen."
     },
 
+    "card_visualization": {
+        title: "Card 2D Visualization",
+        short: "Interactive scatter plot showing card pickability vs. conditional power",
+        full: `Interactive 2D scatter plot where each card is positioned based on two metrics:\
+        \n\nX-axis (Pickability): Measures how pickable/playable a card is, computed as (Pick Rate - Skip Rate). \
+        Higher values mean the card is picked more often and skips less often.\
+        \n\nY-axis (Conditional Power): Measures how well a card performs when picked, based on win rate. \
+        Higher values mean decks with this card win more often.\
+        \n\nBoth metrics use the Rule of Succession (Laplace smoothing) to provide better estimates for cards with limited data.`
+    },
+
     // Add more terms as needed
     // "your_term": {
     //     title: "Display Name",

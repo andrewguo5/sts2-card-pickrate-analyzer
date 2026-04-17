@@ -14,6 +14,7 @@ from models import User, Run, AnalyticsCache
 from schemas import AnalyticsComputeRequest, AnalyticsComputeResponse, AnalyticsResponse
 from analytics_engine import compute_pickrates
 from card_metadata import get_card_metadata
+from card_coordinates import compute_all_card_coordinates
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
@@ -571,3 +572,99 @@ def filter_runs_by_steam_id(db: Session, steam_id: str, character: str, mode: st
     runs = query.all()
     # Decompress run data before returning
     return [decompress_run_data(run.raw_data) for run in runs]
+
+
+@router.get("/card-coordinates")
+def get_card_coordinates(
+    character: str = Query(..., description="Character (e.g., 'regent', 'ironclad')"),
+    mode: str = Query(..., description="Mode: singleplayer, multiplayer, all"),
+    ascension: str = Query(..., description="Ascension: a10, a0-9, all"),
+    steam_id: Optional[str] = Query(None, description="Optional Steam ID for user-specific data"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get 2D coordinates for all cards in a given bucket.
+
+    Each card is assigned (x, y) coordinates where:
+    - x-axis (Pickability): How pickable/playable the card is (pick rate - skip rate)
+    - y-axis (Conditional Power): How well the card performs given it was picked (win rate)
+
+    Query parameters:
+        - character: Character short name (e.g., 'regent', 'ironclad')
+        - mode: 'singleplayer', 'multiplayer', or 'all'
+        - ascension: 'a10', 'a0-9', or 'all'
+        - steam_id: Optional Steam ID for user-specific data (omit for global stats)
+
+    Returns:
+        Dictionary mapping card_id -> coordinate data with metadata
+    """
+    # Convert short character name to full ID
+    character_upper = character.upper()
+    full_character = f"CHARACTER.{character_upper}"
+
+    if full_character not in CHARACTERS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid character: {character}"
+        )
+
+    # Get analytics data (either from cache or compute on demand)
+    if steam_id:
+        # User-specific data
+        runs = filter_runs_by_steam_id(db, steam_id, full_character, mode, ascension)
+        pickrate_data = compute_pickrates(runs, bandwidth=2, character=full_character)
+
+        # Add metadata
+        metadata = {
+            "character": full_character,
+            "ascension_level": ascension.upper().replace("A0-9", "A0-9"),
+            "multiplayer_filter": mode,
+            "runs_processed": len(runs),
+            "kernel_bandwidth": 2,
+            "steam_id": steam_id
+        }
+
+        pickrate_data = {
+            "metadata": metadata,
+            "cards": pickrate_data["cards"],
+            "baseline_skip_data": pickrate_data.get("baseline_skip_data", {})
+        }
+    else:
+        # Global data - try cache first
+        cache_entry = db.query(AnalyticsCache).filter(
+            AnalyticsCache.user_id.is_(None),
+            AnalyticsCache.character == full_character,
+            AnalyticsCache.mode == mode,
+            AnalyticsCache.ascension == ascension
+        ).first()
+
+        if cache_entry and is_cache_fresh(cache_entry):
+            pickrate_data = cache_entry.pickrate_data
+        else:
+            # Compute on demand
+            pickrate_data = compute_and_cache_analytics(db, None, full_character, mode, ascension)
+
+    # Enrich with metadata
+    pickrate_data = enrich_with_metadata(pickrate_data)
+
+    # Compute coordinates for all cards
+    coordinates = compute_all_card_coordinates(pickrate_data)
+
+    # Add card names and metadata to the coordinate data
+    result = {}
+    for card_id, coords in coordinates.items():
+        card_data = pickrate_data.get('cards', {}).get(card_id, {})
+        card_summary = card_data.get('summary', {})
+
+        result[card_id] = {
+            **coords,
+            'name': card_summary.get('name', card_id.replace('CARD.', '')),
+            'type': card_summary.get('type'),
+            'rarity': card_summary.get('rarity'),
+            'cost': card_summary.get('cost')
+        }
+
+    return {
+        'coordinates': result,
+        'metadata': pickrate_data.get('metadata', {})
+    }
