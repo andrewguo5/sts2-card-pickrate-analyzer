@@ -48,34 +48,48 @@ const VisualizationTab = ({
     }, [coordinateData, filterType, filterRarity, filterCost]);
 
     return React.createElement(React.Fragment, null,
-        // Filter sidebar (left) - uses .sidebar class like table view
-        React.createElement('div', { className: 'sidebar' },
-            React.createElement('div', { style: { padding: '20px' } },
-                React.createElement('h3', { style: { marginTop: 0, marginBottom: '15px', fontSize: '16px' } }, 'Filters'),
+        // Title section spanning full width
+        React.createElement('div', {
+            style: {
+                padding: '20px 30px',
+                backgroundColor: 'white',
+                borderBottom: '1px solid #e5e7eb'
+            }
+        },
+            React.createElement('h2', { style: { margin: '0', fontSize: '20px' } },
+                'Card 2D Visualization',
+                React.createElement(window.InfoIcon, { term: 'card_visualization' })
+            ),
+            React.createElement('p', { style: { margin: '8px 0 0 0', fontSize: '14px', color: '#6b7280' } },
+                'Each point represents a card. Hover over points to see details, or click to select a card.'
+            )
+        ),
+
+        // Content area with sidebar and chart
+        React.createElement('div', { className: 'content' },
+            // Filter sidebar (left)
+            React.createElement('div', { className: 'sidebar' },
+                React.createElement('div', { style: { padding: '20px' } },
+                    React.createElement('h3', { style: { marginTop: 0, marginBottom: '15px', fontSize: '16px' } }, 'Filters'),
 
                 // Type filter
                 React.createElement('div', { style: { marginBottom: '15px' } },
                     React.createElement('label', {
                         style: {
                             display: 'block',
-                            fontSize: '14px',
-                            fontWeight: '500',
-                            marginBottom: '6px'
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            color: '#9ca3af',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                            marginBottom: '8px'
                         }
                     }, 'Type'),
                     React.createElement('select', {
+                        className: 'filter-select',
                         value: filterType,
                         onChange: (e) => setFilterType(e.target.value),
-                        style: {
-                            width: '100%',
-                            padding: '8px',
-                            borderRadius: '4px',
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                            color: 'inherit',
-                            fontSize: '13px',
-                            cursor: 'pointer'
-                        }
+                        style: { width: '100%' }
                     },
                         React.createElement('option', { value: 'all' }, 'All Types'),
                         React.createElement('option', { value: 'Attack' }, 'Attack'),
@@ -91,24 +105,19 @@ const VisualizationTab = ({
                     React.createElement('label', {
                         style: {
                             display: 'block',
-                            fontSize: '14px',
-                            fontWeight: '500',
-                            marginBottom: '6px'
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            color: '#9ca3af',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                            marginBottom: '8px'
                         }
                     }, 'Rarity'),
                     React.createElement('select', {
+                        className: 'filter-select',
                         value: filterRarity,
                         onChange: (e) => setFilterRarity(e.target.value),
-                        style: {
-                            width: '100%',
-                            padding: '8px',
-                            borderRadius: '4px',
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                            color: 'inherit',
-                            fontSize: '13px',
-                            cursor: 'pointer'
-                        }
+                        style: { width: '100%' }
                     },
                         React.createElement('option', { value: 'all' }, 'All Rarities'),
                         React.createElement('option', { value: 'Common' }, 'Common'),
@@ -122,24 +131,19 @@ const VisualizationTab = ({
                     React.createElement('label', {
                         style: {
                             display: 'block',
-                            fontSize: '14px',
-                            fontWeight: '500',
-                            marginBottom: '6px'
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            color: '#9ca3af',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                            marginBottom: '8px'
                         }
                     }, 'Cost'),
                     React.createElement('select', {
+                        className: 'filter-select',
                         value: filterCost,
                         onChange: (e) => setFilterCost(e.target.value),
-                        style: {
-                            width: '100%',
-                            padding: '8px',
-                            borderRadius: '4px',
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                            color: 'inherit',
-                            fontSize: '13px',
-                            cursor: 'pointer'
-                        }
+                        style: { width: '100%' }
                     },
                         React.createElement('option', { value: 'all' }, 'All Costs'),
                         React.createElement('option', { value: '0' }, '0'),
@@ -166,22 +170,14 @@ const VisualizationTab = ({
             )
         ),
 
-        // Main panel (right) - uses .main-panel class like table view
-        React.createElement('div', { className: 'main-panel' },
-            React.createElement('div', { style: { padding: '20px' } },
-                React.createElement('h2', { style: { marginTop: 0, marginBottom: '10px' } },
-                    'Card 2D Visualization',
-                    React.createElement(window.InfoIcon, { term: 'card_visualization' })
-                ),
-                React.createElement('p', { style: { margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' } },
-                    'Each point represents a card. Hover over points to see details, or click to select a card.'
-                ),
-
+            // Main panel (right) - chart area
+            React.createElement('div', { className: 'main-panel' },
                 // Chart with border
                 React.createElement('div', {
                     className: 'chart-section',
                     style: {
-                        height: '600px',
+                        height: 'calc(100vh - 280px)',
+                        margin: '20px',
                         padding: '20px',
                         backgroundColor: '#fafafa',
                         borderRadius: '8px',
