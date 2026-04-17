@@ -48,43 +48,10 @@ const VisualizationTab = ({
     }, [coordinateData, filterType, filterRarity, filterCost]);
 
     return React.createElement(React.Fragment, null,
-        // Description section
-        React.createElement('div', { className: 'visualization-description', style: {
-            padding: '20px',
-            marginBottom: '20px',
-            backgroundColor: 'rgba(255, 255, 255, 0.05)',
-            borderRadius: '8px',
-            border: '1px solid rgba(255, 255, 255, 0.1)'
-        }},
-            React.createElement('h3', { style: { marginTop: 0, marginBottom: '10px' } },
-                'Card 2D Visualization',
-                React.createElement(window.InfoIcon, { term: 'card_visualization' })
-            ),
-            React.createElement('p', { style: { margin: '0', fontSize: '14px' } },
-                'Each point represents a card. Hover over points to see details, or click to select a card.'
-            )
-        ),
-
-        // Main content area with sidebar and chart
-        React.createElement('div', {
-            style: {
-                display: 'flex',
-                gap: '20px',
-                alignItems: 'flex-start'
-            }
-        },
-            // Filter sidebar (left)
-            React.createElement('div', {
-                style: {
-                    width: '200px',
-                    flexShrink: 0,
-                    padding: '20px',
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                    borderRadius: '8px',
-                    border: '1px solid rgba(255, 255, 255, 0.1)'
-                }
-            },
-                React.createElement('h4', { style: { marginTop: 0, marginBottom: '15px', fontSize: '16px' } }, 'Filters'),
+        // Filter sidebar (left) - uses .sidebar class like table view
+        React.createElement('div', { className: 'sidebar' },
+            React.createElement('div', { style: { padding: '20px' } },
+                React.createElement('h3', { style: { marginTop: 0, marginBottom: '15px', fontSize: '16px' } }, 'Filters'),
 
                 // Type filter
                 React.createElement('div', { style: { marginBottom: '15px' } },
@@ -187,32 +154,38 @@ const VisualizationTab = ({
                     style: {
                         marginTop: '20px',
                         paddingTop: '15px',
-                        borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                        borderTop: '1px solid #e5e7eb',
                         fontSize: '13px',
-                        color: 'rgba(255, 255, 255, 0.7)',
+                        color: '#6b7280',
                         textAlign: 'center'
                     }
                 },
                     React.createElement('div', null, `Showing ${Object.keys(filteredCoordinateData.coordinates).length}`),
                     React.createElement('div', null, `of ${Object.keys(coordinateData.coordinates).length} cards`)
                 )
-            ),
+            )
+        ),
 
-            // Scatter plot (right)
-            React.createElement('div', {
-                style: {
-                    flex: 1,
-                    minWidth: 0
-                }
-            },
+        // Main panel (right) - uses .main-panel class like table view
+        React.createElement('div', { className: 'main-panel' },
+            React.createElement('div', { style: { padding: '20px' } },
+                React.createElement('h2', { style: { marginTop: 0, marginBottom: '10px' } },
+                    'Card 2D Visualization',
+                    React.createElement(window.InfoIcon, { term: 'card_visualization' })
+                ),
+                React.createElement('p', { style: { margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' } },
+                    'Each point represents a card. Hover over points to see details, or click to select a card.'
+                ),
+
+                // Chart with border
                 React.createElement('div', {
                     className: 'chart-section',
                     style: {
                         height: '600px',
                         padding: '20px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                        backgroundColor: '#fafafa',
                         borderRadius: '8px',
-                        border: '1px solid rgba(255, 255, 255, 0.15)'
+                        border: '2px solid #e5e7eb'
                     }
                 },
                     coordinateData

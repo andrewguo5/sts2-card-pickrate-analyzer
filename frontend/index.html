@@ -411,8 +411,8 @@
                             })
                     )
                 ) // End of table content
-                : React.createElement('div', { className: 'visualization-view', style: { padding: '20px' } },
-                    // Visualization view
+                : React.createElement('div', { className: 'content' },
+                    // Visualization view (uses same grid layout as table view)
                     loadingCoordinates
                         ? React.createElement('div', { className: 'loading', style: { padding: '40px', textAlign: 'center' } },
                             'Loading visualization...'
