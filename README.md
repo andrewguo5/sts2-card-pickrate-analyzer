@@ -1,6 +1,7 @@
 # Slay the Spire 2 Analytics
 
 Card pick rate analytics platform for Slay the Spire 2.
+Visit site: https://mbgg.up.railway.app/
 
 ## What It Does
 
