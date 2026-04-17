@@ -30,28 +30,38 @@ const CardScatterPlot = ({ coordinateData, onCardClick, selectedCardId }) => {
             win_rate_estimate: data.win_rate_estimate
         }));
 
-        // Group by card type for different colors
+        // Group by card type for different colors and shapes
         const typeColors = {
-            'attack': 'rgba(220, 53, 69, 0.7)',
-            'skill': 'rgba(40, 167, 69, 0.7)',
-            'power': 'rgba(255, 193, 7, 0.7)',
-            'curse': 'rgba(108, 117, 125, 0.7)',
-            'status': 'rgba(23, 162, 184, 0.7)'
+            'Attack': 'rgba(220, 53, 69, 0.7)',      // Red
+            'Skill': 'rgba(40, 167, 69, 0.7)',       // Green
+            'Power': 'rgba(255, 193, 7, 0.7)',       // Yellow/Gold
+            'Curse': 'rgba(108, 117, 125, 0.7)',     // Gray
+            'Status': 'rgba(23, 162, 184, 0.7)'      // Cyan
+        };
+
+        const typeShapes = {
+            'Attack': 'triangle',       // Triangle for Attack
+            'Skill': 'rect',            // Square for Skill
+            'Power': 'circle',          // Circle for Power
+            'Curse': 'crossRot',        // X for Curse
+            'Status': 'star'            // Star for Status
         };
 
         // Group cards by type
         const datasets = {};
         cards.forEach(card => {
-            const type = card.type || 'unknown';
+            const type = card.type || 'Unknown';
             if (!datasets[type]) {
+                const color = typeColors[type] || 'rgba(150, 150, 150, 0.7)';
                 datasets[type] = {
-                    label: type.charAt(0).toUpperCase() + type.slice(1),
+                    label: type,
                     data: [],
-                    backgroundColor: typeColors[type] || 'rgba(150, 150, 150, 0.7)',
-                    borderColor: typeColors[type]?.replace('0.7', '1') || 'rgba(150, 150, 150, 1)',
+                    backgroundColor: color,
+                    borderColor: color.replace('0.7', '1'),
                     borderWidth: 2,
                     pointRadius: 6,
-                    pointHoverRadius: 10
+                    pointHoverRadius: 10,
+                    pointStyle: typeShapes[type] || 'circle'
                 };
             }
             datasets[type].data.push(card);

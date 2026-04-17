@@ -651,14 +651,23 @@ def get_card_coordinates(
     coordinates = compute_all_card_coordinates(pickrate_data)
 
     # Add card names and metadata to the coordinate data
+    # Exclude cards without metadata (colorless cards not in Spire Codex)
     result = {}
     for card_id, coords in coordinates.items():
         card_data = pickrate_data.get('cards', {}).get(card_id, {})
         card_summary = card_data.get('summary', {})
 
+        # Skip cards without metadata (name will be missing if metadata lookup failed)
+        if not card_summary.get('name'):
+            continue
+
+        # Skip cards without type/rarity (indicates missing metadata)
+        if not card_summary.get('type') or not card_summary.get('rarity'):
+            continue
+
         result[card_id] = {
             **coords,
-            'name': card_summary.get('name', card_id.replace('CARD.', '')),
+            'name': card_summary.get('name'),
             'type': card_summary.get('type'),
             'rarity': card_summary.get('rarity'),
             'cost': card_summary.get('cost')

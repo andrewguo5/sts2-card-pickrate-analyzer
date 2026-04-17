@@ -27,14 +27,15 @@ def load_card_metadata():
     """
     global CARD_METADATA_CACHE
 
-    characters = ['ironclad', 'silent', 'regent', 'necrobinder', 'defect']
+    # Fetch cards for each character color + colorless cards
+    colors = ['ironclad', 'silent', 'regent', 'necrobinder', 'defect', 'colorless']
     total_cards = 0
 
     logger.info("Loading card metadata from Spire Codex API...")
 
-    for character in characters:
+    for color in colors:
         try:
-            url = f"{SPIRE_CODEX_API}/cards?color={character}"
+            url = f"{SPIRE_CODEX_API}/cards?color={color}"
             response = requests.get(url, timeout=10)
             response.raise_for_status()
 
@@ -57,12 +58,12 @@ def load_card_metadata():
                 }
                 total_cards += 1
 
-            logger.info(f"  ✓ Loaded {len(cards)} cards for {character}")
+            logger.info(f"  ✓ Loaded {len(cards)} cards for {color}")
 
         except requests.exceptions.RequestException as e:
-            logger.error(f"  ✗ Failed to load cards for {character}: {e}")
+            logger.error(f"  ✗ Failed to load cards for {color}: {e}")
         except Exception as e:
-            logger.error(f"  ✗ Error processing cards for {character}: {e}")
+            logger.error(f"  ✗ Error processing cards for {color}: {e}")
 
     logger.info(f"Card metadata cache loaded: {total_cards} cards total")
 
