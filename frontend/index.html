@@ -360,7 +360,9 @@
                         usersList,
                         usernameCache,
                         filteredRunCounts,
-                        onOpenGlossary: () => setIsGlossaryOpen(true)
+                        onOpenGlossary: () => setIsGlossaryOpen(true),
+                        viewMode,
+                        setViewMode
                     }),
 
                     // MetadataBar
@@ -368,31 +370,6 @@
                         metadata: data.metadata,
                         usernameCache: usernameCache
                     }),
-
-                    // View mode switcher
-                    React.createElement('div', {
-                        className: 'view-mode-switcher',
-                        style: {
-                            display: 'flex',
-                            justifyContent: 'center',
-                            gap: '10px',
-                            margin: '20px 0',
-                            padding: '10px',
-                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                            borderRadius: '8px'
-                        }
-                    },
-                        React.createElement('button', {
-                            className: viewMode === 'table' ? 'tab-button active' : 'tab-button',
-                            onClick: () => setViewMode('table'),
-                            style: { minWidth: '150px' }
-                        }, '📊 Table View'),
-                        React.createElement('button', {
-                            className: viewMode === 'visualization' ? 'tab-button active' : 'tab-button',
-                            onClick: () => setViewMode('visualization'),
-                            style: { minWidth: '150px' }
-                        }, '🎯 2D Visualization')
-                    ),
 
                     // Content area
                 viewMode === 'table' ? React.createElement('div', { className: 'content' },
