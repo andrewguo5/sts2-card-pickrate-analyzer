@@ -1,6 +1,7 @@
 # Slay the Spire 2 Analytics
 
 Card pick rate analytics platform for Slay the Spire 2.
+Visit site: https://mbgg.up.railway.app/
 
 ## What It Does
 
@@ -125,6 +126,3 @@ Users → sts2_uploader.py → FastAPI Backend → PostgreSQL
 - JWT authentication available for future features
 - `.env` files gitignored
 
-## Cost
-
-Railway Hobby: $5/month (includes PostgreSQL)
