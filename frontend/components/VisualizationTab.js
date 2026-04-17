@@ -94,9 +94,7 @@ const VisualizationTab = ({
                         React.createElement('option', { value: 'all' }, 'All Types'),
                         React.createElement('option', { value: 'Attack' }, 'Attack'),
                         React.createElement('option', { value: 'Skill' }, 'Skill'),
-                        React.createElement('option', { value: 'Power' }, 'Power'),
-                        React.createElement('option', { value: 'Curse' }, 'Curse'),
-                        React.createElement('option', { value: 'Status' }, 'Status')
+                        React.createElement('option', { value: 'Power' }, 'Power')
                     )
                 ),
 
