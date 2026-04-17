@@ -125,6 +125,3 @@ Users → sts2_uploader.py → FastAPI Backend → PostgreSQL
 - JWT authentication available for future features
 - `.env` files gitignored
 
-## Cost
-
-Railway Hobby: $5/month (includes PostgreSQL)
