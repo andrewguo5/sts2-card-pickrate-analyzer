@@ -109,6 +109,12 @@ const CardScatterPlot = ({ coordinateData, onCardClick, selectedCardId, searchTe
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: false,
+                interaction: {
+                    mode: 'nearest',
+                    intersect: true,
+                    axis: 'xy'
+                },
                 scales: {
                     x: {
                         title: {

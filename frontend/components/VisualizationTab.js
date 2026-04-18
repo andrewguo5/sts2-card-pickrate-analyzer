@@ -58,8 +58,7 @@ const VisualizationTab = ({
             }
         },
             React.createElement('h2', { style: { margin: '0', fontSize: '20px' } },
-                'Card 2D Visualization',
-                React.createElement(window.InfoIcon, { term: 'card_visualization' })
+                'Card 2D Visualization'
             ),
             React.createElement('p', { style: { margin: '8px 0 0 0', fontSize: '14px', color: '#6b7280' } },
                 'Each point represents a card. Hover over points to see details, or click to select a card.'
