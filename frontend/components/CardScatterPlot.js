@@ -1,5 +1,5 @@
 // CardScatterPlot - Interactive 2D scatter plot for card visualization
-const CardScatterPlot = ({ coordinateData, onCardClick, selectedCardId }) => {
+const CardScatterPlot = ({ coordinateData, onCardClick, selectedCardId, searchTerm }) => {
     const { useState, useEffect, useRef } = React;
     const chartRef = useRef(null);
     const chartInstanceRef = useRef(null);
@@ -15,20 +15,28 @@ const CardScatterPlot = ({ coordinateData, onCardClick, selectedCardId }) => {
         }
 
         // Prepare data points
-        const cards = Object.entries(coordinateData.coordinates).map(([cardId, data]) => ({
-            x: data.x * 100, // Convert to percentage for display
-            y: data.y * 100,
-            cardId,
-            name: data.name,
-            type: data.type,
-            rarity: data.rarity,
-            cost: data.cost,
-            total_offered: data.total_offered,
-            total_picked: data.total_picked,
-            pick_rate_estimate: data.pick_rate_estimate,
-            skip_rate_estimate: data.skip_rate_estimate,
-            win_rate_estimate: data.win_rate_estimate
-        }));
+        const cards = Object.entries(coordinateData.coordinates).map(([cardId, data]) => {
+            // Check if card matches search term
+            const normalizedSearch = (searchTerm || '').toLowerCase().trim();
+            const matchesSearch = !normalizedSearch ||
+                data.name.toLowerCase().includes(normalizedSearch);
+
+            return {
+                x: data.x * 100, // Convert to percentage for display
+                y: data.y * 100,
+                cardId,
+                name: data.name,
+                type: data.type,
+                rarity: data.rarity,
+                cost: data.cost,
+                total_offered: data.total_offered,
+                total_picked: data.total_picked,
+                pick_rate_estimate: data.pick_rate_estimate,
+                skip_rate_estimate: data.skip_rate_estimate,
+                win_rate_estimate: data.win_rate_estimate,
+                matchesSearch
+            };
+        });
 
         // Group by card type for different colors and shapes
         const typeColors = {
@@ -47,24 +55,35 @@ const CardScatterPlot = ({ coordinateData, onCardClick, selectedCardId }) => {
             'Status': 'star'            // Star for Status
         };
 
-        // Group cards by type
+        // Group cards by type, and further split by search match status
         const datasets = {};
         cards.forEach(card => {
             const type = card.type || 'Unknown';
-            if (!datasets[type]) {
-                const color = typeColors[type] || 'rgba(150, 150, 150, 0.7)';
-                datasets[type] = {
+
+            // Create separate datasets for matching and non-matching cards
+            const matchKey = card.matchesSearch ? `${type}_match` : `${type}_nomatch`;
+
+            if (!datasets[matchKey]) {
+                const baseColor = typeColors[type] || 'rgba(150, 150, 150, 0.7)';
+                // Reduce opacity for non-matching cards
+                const opacity = card.matchesSearch ? 0.7 : 0.15;
+                const color = baseColor.replace('0.7', opacity.toString());
+
+                datasets[matchKey] = {
                     label: type,
                     data: [],
                     backgroundColor: color,
-                    borderColor: color.replace('0.7', '1'),
-                    borderWidth: 2,
-                    pointRadius: 6,
+                    borderColor: baseColor.replace('0.7', card.matchesSearch ? '1' : '0.3'),
+                    borderWidth: card.matchesSearch ? 2 : 1,
+                    pointRadius: card.matchesSearch ? 6 : 4,
                     pointHoverRadius: 10,
-                    pointStyle: typeShapes[type] || 'circle'
+                    pointStyle: typeShapes[type] || 'circle',
+                    // Hide from legend if it's a non-matching dataset
+                    hidden: false,
+                    showInLegend: card.matchesSearch
                 };
             }
-            datasets[type].data.push(card);
+            datasets[matchKey].data.push(card);
         });
 
         // Highlight selected card
@@ -90,6 +109,20 @@ const CardScatterPlot = ({ coordinateData, onCardClick, selectedCardId }) => {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: false,
+                interaction: {
+                    mode: 'nearest',
+                    intersect: true,
+                    axis: 'xy',
+                    filter: (element) => {
+                        // If there's a search term, only allow interaction with matching cards
+                        if (searchTerm && searchTerm.trim()) {
+                            const point = element.element.$context.raw;
+                            return point.matchesSearch;
+                        }
+                        return true;
+                    }
+                },
                 scales: {
                     x: {
                         title: {
@@ -122,7 +155,12 @@ const CardScatterPlot = ({ coordinateData, onCardClick, selectedCardId }) => {
                         position: 'top',
                         labels: {
                             usePointStyle: true,
-                            padding: 15
+                            padding: 15,
+                            filter: (legendItem, chartData) => {
+                                // Only show matching datasets in legend (avoid duplicates)
+                                const dataset = chartData.datasets[legendItem.datasetIndex];
+                                return dataset.showInLegend !== false;
+                            }
                         }
                     },
                     tooltip: {
@@ -204,7 +242,7 @@ const CardScatterPlot = ({ coordinateData, onCardClick, selectedCardId }) => {
                 chartInstanceRef.current.destroy();
             }
         };
-    }, [coordinateData, onCardClick, selectedCardId]);
+    }, [coordinateData, onCardClick, selectedCardId, searchTerm]);
 
     if (!coordinateData || !coordinateData.coordinates) {
         return React.createElement('div', { className: 'loading', style: { padding: '40px', textAlign: 'center' } },

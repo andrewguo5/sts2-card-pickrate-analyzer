@@ -75,18 +75,17 @@ class CardPickRateAnalyzer:
         """
         Extract all card choices from a run's map_point_history.
 
-        Also tracks skip rates (excluding shops) and win rates by act.
+        Also tracks skip rates (excluding shops) and win rates.
+
+        Note: Pick/skip rates only count cards from reward screens (exclude shops).
+        Win rates count all cards in the final deck (include shops, events, etc).
         """
         map_history = run_data.get('map_point_history', [])
         victory = run_data.get('win', False)
 
-        # Track which cards were picked in this run (to avoid double-counting)
-        # Format: set of card_ids picked at least once
-        cards_picked_this_run = set()
-
-        # Also track which cards were picked in each act (for act-specific win rates)
-        # Format: {card_id: set of acts where it was picked}
-        cards_picked_per_act_this_run = defaultdict(set)
+        # Track which cards were picked from rewards in this run (for pick/skip rate analysis)
+        # Format: set of card_ids picked at least once from non-shop rewards
+        cards_picked_from_rewards_this_run = set()
 
         for act_idx, act_points in enumerate(map_history):
             act_number = act_idx + 1  # Acts are 1-indexed
@@ -145,20 +144,59 @@ class CardPickRateAnalyzer:
                         if all_skipped:
                             self.skip_data[card_id][floor]["skipped"] += 1
 
-                    # Track when cards are picked (for win rate calculation later)
-                    if was_picked:
-                        cards_picked_this_run.add(card_id)
-                        cards_picked_per_act_this_run[card_id].add(act_number)
+                    # Track when cards are picked from rewards (for reference, not used for win rate)
+                    if was_picked and not is_shop:
+                        cards_picked_from_rewards_this_run.add(card_id)
 
-        # After processing all acts in this run, update win rate data
-        # Overall win rate: count each card once per run (regardless of how many times picked)
-        for card_id in cards_picked_this_run:
+        # Calculate win rates based on final deck (includes all acquisition methods)
+        # Extract cards from final deck
+        players = run_data.get('players', [])
+        if players:
+            deck = players[0].get('deck', [])
+
+            # Track unique cards in deck and which act each was added
+            cards_in_deck_this_run = set()
+            cards_per_act_this_run = defaultdict(set)
+
+            # Build cumulative floor counts for act mapping
+            act_floor_boundaries = []
+            cumulative_floors = 0
+            for act_points in map_history:
+                cumulative_floors += len(act_points)
+                act_floor_boundaries.append(cumulative_floors)
+
+            for card_dict in deck:
+                card_id = card_dict.get('id', '')
+                floor_added = card_dict.get('floor_added_to_deck', 1)
+
+                if not card_id:
+                    continue
+
+                # Filter out cross-class cards if character filter is enabled
+                if self.character_color:
+                    metadata = get_card_metadata(card_id)
+                    if metadata and metadata.get('color') != self.character_color:
+                        continue
+
+                # Track for overall win rate
+                cards_in_deck_this_run.add(card_id)
+
+                # Determine which act this card was added in
+                for act_idx, boundary in enumerate(act_floor_boundaries):
+                    if floor_added <= boundary:
+                        act_number = act_idx + 1
+                        cards_per_act_this_run[card_id].add(act_number)
+                        break
+
+        # Update win rate data based on final deck
+        # Overall win rate: count each card once per run
+        for card_id in cards_in_deck_this_run:
             self.winrate_data[card_id]["overall"]["picked"] += 1
             if victory:
                 self.winrate_data[card_id]["overall"]["won"] += 1
 
         # Act-specific win rates: count each (card, act) combination once per run
-        for card_id, acts in cards_picked_per_act_this_run.items():
+        for card_id, acts in cards_per_act_this_run.items():
             for act_number in acts:
                 self.winrate_data[card_id][act_number]["picked"] += 1
                 if victory:

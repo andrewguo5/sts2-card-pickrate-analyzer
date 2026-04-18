@@ -12,6 +12,7 @@ const VisualizationTab = ({
     const [filterType, setFilterType] = useState('all');
     const [filterRarity, setFilterRarity] = useState('all');
     const [filterCost, setFilterCost] = useState('all');
+    const [searchTerm, setSearchTerm] = useState('');
 
     // Filter coordinate data based on selected filters
     const filteredCoordinateData = useMemo(() => {
@@ -57,8 +58,7 @@ const VisualizationTab = ({
             }
         },
             React.createElement('h2', { style: { margin: '0', fontSize: '20px' } },
-                'Card 2D Visualization',
-                React.createElement(window.InfoIcon, { term: 'card_visualization' })
+                'Card 2D Visualization'
             ),
             React.createElement('p', { style: { margin: '8px 0 0 0', fontSize: '14px', color: '#6b7280' } },
                 'Each point represents a card. Hover over points to see details, or click to select a card.'
@@ -71,6 +71,38 @@ const VisualizationTab = ({
             React.createElement('div', { className: 'sidebar' },
                 React.createElement('div', { style: { padding: '20px' } },
                     React.createElement('h3', { style: { marginTop: 0, marginBottom: '15px', fontSize: '16px' } }, 'Filters'),
+
+                // Search input
+                React.createElement('div', { style: { marginBottom: '15px' } },
+                    React.createElement('label', {
+                        style: {
+                            display: 'block',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            color: '#9ca3af',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                            marginBottom: '8px'
+                        }
+                    }, 'Search'),
+                    React.createElement('input', {
+                        type: 'text',
+                        className: 'search-input',
+                        placeholder: 'Search cards...',
+                        value: searchTerm,
+                        onChange: (e) => setSearchTerm(e.target.value),
+                        style: {
+                            width: '100%',
+                            padding: '8px 12px',
+                            border: '2px solid #374151',
+                            borderRadius: '6px',
+                            background: '#111827',
+                            color: 'white',
+                            fontSize: '14px',
+                            fontWeight: '500'
+                        }
+                    })
+                ),
 
                 // Type filter
                 React.createElement('div', { style: { marginBottom: '15px' } },
@@ -186,7 +218,8 @@ const VisualizationTab = ({
                         ? React.createElement(window.CardScatterPlot, {
                             coordinateData: filteredCoordinateData,
                             onCardClick,
-                            selectedCardId
+                            selectedCardId,
+                            searchTerm
                         })
                         : React.createElement('div', { className: 'loading', style: { padding: '40px', textAlign: 'center' } },
                             'Loading coordinate data...'
