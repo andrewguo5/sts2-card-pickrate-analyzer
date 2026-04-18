@@ -113,7 +113,15 @@ const CardScatterPlot = ({ coordinateData, onCardClick, selectedCardId, searchTe
                 interaction: {
                     mode: 'nearest',
                     intersect: true,
-                    axis: 'xy'
+                    axis: 'xy',
+                    filter: (element) => {
+                        // If there's a search term, only allow interaction with matching cards
+                        if (searchTerm && searchTerm.trim()) {
+                            const point = element.element.$context.raw;
+                            return point.matchesSearch;
+                        }
+                        return true;
+                    }
                 },
                 scales: {
                     x: {
