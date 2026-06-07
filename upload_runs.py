@@ -46,7 +46,16 @@ def find_run_files():
     pattern = str(BASE_PATH / "steam/*/profile*/saves/history/*.run")
     run_files = glob.glob(pattern, recursive=True)
 
-    return run_files
+    # Explicitly exclude modded runs. Modded saves live in a "modded" folder
+    # (alongside profile1/profile2/profile3) rather than a "profile*" folder, so
+    # the glob above already skips them. We filter defensively in case a "modded"
+    # directory appears anywhere in the path, then report what was skipped.
+    vanilla_files = [p for p in run_files if "modded" not in {part.lower() for part in Path(p).parts}]
+    skipped = len(run_files) - len(vanilla_files)
+    if skipped:
+        print(f"Skipped {skipped} modded run file(s) (only vanilla runs are uploaded)")
+
+    return vanilla_files
 
 
 def compute_hash(run_data):
