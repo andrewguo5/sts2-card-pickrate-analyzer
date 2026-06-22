@@ -152,6 +152,7 @@
 
                 if (!onlyUserChanged) {
                     setSelectedCard(null);
+                    setData(null); // Drop stale data so auto-select can't pick a card from the previous filter bucket
                     setActiveTab('pickrate'); // Reset to default tab when changing character/mode/ascension
                 }
                 // If only user changed, preserve both selected card AND active tab
@@ -291,6 +292,19 @@
 
                 return cards;
             }, [data, searchTerm, sortBy, filterType, filterRarity]);
+
+            // Default selection on first load: pick the top card by overall pick rate
+            // so the detail panel isn't empty when the page opens. Only applies when
+            // nothing is selected yet (e.g. fresh load or after filters cleared it),
+            // so it never overrides a card the user clicked.
+            useEffect(() => {
+                if (!data || selectedCard || sortedCards.length === 0) return;
+
+                const topByPickRate = sortedCards.reduce((best, card) =>
+                    (card.overall_pickrate || 0) > (best.overall_pickrate || 0) ? card : best
+                );
+                setSelectedCard(topByPickRate);
+            }, [data, selectedCard, sortedCards]);
 
             const chartData = useMemo(() => {
                 if (!selectedCard) return [];
