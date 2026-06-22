@@ -152,6 +152,7 @@
 
                 if (!onlyUserChanged) {
                     setSelectedCard(null);
+                    setData(null); // Drop stale data so auto-select can't pick a card from the previous filter bucket
                     setActiveTab('pickrate'); // Reset to default tab when changing character/mode/ascension
                 }
                 // If only user changed, preserve both selected card AND active tab
