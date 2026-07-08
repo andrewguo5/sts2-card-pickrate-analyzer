@@ -10,7 +10,8 @@ const CardList = ({
     filterType,
     onFilterTypeChange,
     filterRarity,
-    onFilterRarityChange
+    onFilterRarityChange,
+    showTrend
 }) => {
     return React.createElement('div', { className: 'sidebar' },
         // Search and filters box
@@ -78,7 +79,12 @@ const CardList = ({
                         React.createElement('div', { className: 'card-name' }, card.name || card.id.replace('CARD.', '')),
                         React.createElement('div', { className: 'card-stats' },
                             React.createElement('span', { className: 'stat-badge' }, `${card.total_offered} offered`),
-                            React.createElement('span', { className: 'stat-badge' }, `${(card.overall_pickrate * 100).toFixed(1)}%`)
+                            React.createElement('span', { className: 'stat-badge' }, `${(card.overall_pickrate * 100).toFixed(1)}%`),
+                            showTrend && React.createElement(window.DeltaBadge, {
+                                deltaPp: card.pickrate_delta_pp,
+                                sufficient: card.pickrate_trend_ok,
+                                hideWhenFlat: true
+                            })
                         )
                     )
                 )

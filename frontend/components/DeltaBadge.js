@@ -2,14 +2,16 @@
 // stat away from its baseline. Rendered next to a headline stat value.
 //
 // Props:
-//   deltaPp     - signed percentage-point difference (headline - baseline)
-//   sufficient  - whether the recent window had enough samples to trust the delta
+//   deltaPp       - signed percentage-point difference (headline - baseline)
+//   sufficient    - whether the recent window had enough samples to trust the delta
+//   hideWhenFlat  - if true, render nothing (instead of a grey dash) when the delta
+//                   is insufficient or flat; used in the dense sidebar list
 //
 // States:
-//   insufficient / exactly flat -> muted grey dash (no misleading arrow)
-//   positive delta              -> green up arrow + "+X.X pp"
+//   insufficient / exactly flat -> muted grey dash (or nothing if hideWhenFlat)
+//   positive delta              -> green up arrow + "X.X pp"
 //   negative delta              -> red down arrow + "X.X pp"
-const DeltaBadge = ({ deltaPp, sufficient }) => {
+const DeltaBadge = ({ deltaPp, sufficient, hideWhenFlat = false }) => {
     const baseStyle = {
         display: 'inline-block',
         marginLeft: '8px',
@@ -20,6 +22,7 @@ const DeltaBadge = ({ deltaPp, sufficient }) => {
     };
 
     if (!sufficient || deltaPp === 0) {
+        if (hideWhenFlat) return null;
         return React.createElement('span', {
             style: { ...baseStyle, color: '#9ca3af' },
             title: sufficient ? 'No change from recent runs' : 'Not enough recent runs'
