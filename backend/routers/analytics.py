@@ -21,6 +21,14 @@ router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 # Cache TTL: 24 hours
 CACHE_TTL_HOURS = 24
 
+# Trend delta window (personal stats only): compares the headline stat computed
+# over all of a user's runs against a baseline computed over all runs EXCEPT the
+# most recent RECENT_RUN_WINDOW. The delta surfaces how recent play has shifted
+# each card's pick/win/skip rate.
+RECENT_RUN_WINDOW = 10           # N: number of most-recent runs defining the "recent" window
+MIN_RECENT_OFFERS_FOR_TREND = 3  # min recent offers before a pick/skip delta is shown
+MIN_RECENT_PICKS_FOR_TREND = 3   # min recent picks before a win-rate delta is shown
+
 
 # Character mapping
 CHARACTERS = [
@@ -484,6 +492,84 @@ def get_users_filtered_counts(
     }
 
 
+def _overall_winrate(card: dict) -> tuple:
+    """Return (win_rate, picked) for a card, computed as won/picked over all acts.
+
+    Mirrors the frontend calculation in WinRateTab.js (winrate_data.overall).
+    """
+    overall = card.get("winrate_data", {}).get("overall", {})
+    picked = overall.get("picked", 0)
+    won = overall.get("won", 0)
+    win_rate = won / picked if picked > 0 else 0.0
+    return win_rate, picked
+
+
+def _overall_skiprate(card: dict) -> float:
+    """Return the overall skip rate for a card, summed across floors.
+
+    Mirrors the frontend calculation in SkipRateTab.js (skip_data).
+    """
+    skip_data = card.get("skip_data", {})
+    offered = sum(counts["offered"] for counts in skip_data.values())
+    skipped = sum(counts["skipped"] for counts in skip_data.values())
+    return skipped / offered if offered > 0 else 0.0
+
+
+def _attach_trend_deltas(all_cards: dict, baseline_cards: Optional[dict]) -> None:
+    """Inject recent-play trend deltas into each card's summary, in place.
+
+    For every card, compares the headline stat (over all runs) against a baseline
+    stat (over runs excluding the most recent RECENT_RUN_WINDOW). The delta is
+    expressed in percentage points. A per-metric sufficiency flag guards against
+    noise: it is only set when the recent window contributed enough samples, where
+    the recent count is derived as (headline count - baseline count).
+
+    When baseline_cards is None (too few total runs for a baseline), all deltas
+    are 0.0 and all sufficiency flags are False.
+    """
+    has_baseline = baseline_cards is not None
+
+    for card_id, card in all_cards.items():
+        summary = card["summary"]
+
+        if not has_baseline:
+            summary["pickrate_delta_pp"] = 0.0
+            summary["winrate_delta_pp"] = 0.0
+            summary["skiprate_delta_pp"] = 0.0
+            summary["pickrate_trend_ok"] = False
+            summary["winrate_trend_ok"] = False
+            summary["skiprate_trend_ok"] = False
+            continue
+
+        baseline = baseline_cards.get(card_id)
+
+        # Headline stats (over all runs).
+        pick_rate = summary["overall_pickrate"]
+        win_rate, picked = _overall_winrate(card)
+        skip_rate = _overall_skiprate(card)
+
+        # Baseline stats (over old runs only); absent card => 0 rate, 0 counts.
+        base_summary = baseline["summary"] if baseline else None
+        base_pick_rate = base_summary["overall_pickrate"] if base_summary else 0.0
+        base_offered = base_summary["total_offered"] if base_summary else 0
+        base_win_rate, base_picked = _overall_winrate(baseline) if baseline else (0.0, 0)
+        base_skip_rate = _overall_skiprate(baseline) if baseline else 0.0
+
+        # Recent-window sample counts = headline - baseline.
+        recent_offers = summary["total_offered"] - base_offered
+        recent_picks = picked - base_picked
+
+        offers_ok = recent_offers >= MIN_RECENT_OFFERS_FOR_TREND
+        picks_ok = recent_picks >= MIN_RECENT_PICKS_FOR_TREND
+
+        summary["pickrate_delta_pp"] = round((pick_rate - base_pick_rate) * 100, 1)
+        summary["winrate_delta_pp"] = round((win_rate - base_win_rate) * 100, 1)
+        summary["skiprate_delta_pp"] = round((skip_rate - base_skip_rate) * 100, 1)
+        summary["pickrate_trend_ok"] = offers_ok
+        summary["winrate_trend_ok"] = picks_ok
+        summary["skiprate_trend_ok"] = offers_ok
+
+
 @router.get("/user-stats", response_model=AnalyticsResponse)
 def get_user_stats(
     steam_id: str = Query(..., description="Steam ID"),
@@ -516,6 +602,17 @@ def get_user_stats(
 
     # Compute pick rates (with character filter to exclude cross-class cards)
     pickrate_data = compute_pickrates(runs, bandwidth=2, character=full_character)
+
+    # Attach recent-play trend deltas. runs is ordered oldest -> newest, so the
+    # baseline is every run except the most recent RECENT_RUN_WINDOW. When there
+    # aren't enough runs for a baseline, deltas fall back to the insufficient state.
+    total = len(runs)
+    if total > RECENT_RUN_WINDOW:
+        old_runs = runs[:total - RECENT_RUN_WINDOW]
+        baseline_data = compute_pickrates(old_runs, bandwidth=2, character=full_character)
+        _attach_trend_deltas(pickrate_data["cards"], baseline_data["cards"])
+    else:
+        _attach_trend_deltas(pickrate_data["cards"], baseline_cards=None)
 
     # Add metadata
     metadata = {
@@ -569,7 +666,9 @@ def filter_runs_by_steam_id(db: Session, steam_id: str, character: str, mode: st
         Run.num_players <= mode_criteria["max"]
     )
 
-    runs = query.all()
+    # Order by upload sequence (Run.id) so index reflects recency: oldest first,
+    # newest last. This makes the "most recent N runs" slice deterministic.
+    runs = query.order_by(Run.id.asc()).all()
     # Decompress run data before returning
     return [decompress_run_data(run.raw_data) for run in runs]
 

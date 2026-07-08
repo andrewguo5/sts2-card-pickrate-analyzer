@@ -14,6 +14,7 @@
     <script src="glossary.js"></script>
     <script src="components/config.js"></script>
     <script src="components/InfoIcon.js"></script>
+    <script src="components/DeltaBadge.js"></script>
     <script src="components/HelpPanel.js"></script>
     <script src="components/ChartComponent.js"></script>
     <script src="components/SkipRateChart.js"></script>
@@ -421,7 +422,8 @@
                                 winRateData,
                                 baselineSkipData: data?.baseline_skip_data,
                                 activeTab,
-                                setActiveTab
+                                setActiveTab,
+                                showTrend: !!selectedUser // trend deltas only exist on the personal stats path
                             })
                     )
                 ) // End of table content
