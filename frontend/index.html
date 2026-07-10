@@ -477,13 +477,24 @@
                             title: 'Back to all characters'
                         }, '← All characters'),
                         React.createElement('h1', null, 'STS2 Card Pick Rate Analyzer'),
-                        React.createElement('div', { className: 'subtitle' }, 'Card pick rates by floor')
+                        React.createElement('div', { className: 'subtitle' }, 'Card pick rates by floor'),
+                        React.createElement('button', {
+                            className: 'header-upload-link',
+                            onClick: () => onNavigate(ROUTES.UPLOAD),
+                            title: 'Upload your runs'
+                        }, 'Upload runs →')
                     ),
 
                     // FilterBar (sticky within scrollable content)
                     React.createElement(window.FilterBar, {
                         selectedCharacter,
-                        setSelectedCharacter,
+                        // Route through the hash so the URL and the selected
+                        // character can't drift apart: navigate() rewrites the
+                        // hash, the hashchange listener re-parses it, and App
+                        // remounts this view keyed on the new character. Setting
+                        // state directly would leave the URL pointing at the
+                        // character the visitor originally deep-linked to.
+                        onCharacterChange: (characterId) => onNavigate(ROUTES.ANALYZER, characterId),
                         selectedMode,
                         setSelectedMode,
                         selectedAscension,

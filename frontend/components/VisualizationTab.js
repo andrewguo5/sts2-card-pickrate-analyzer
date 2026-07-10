@@ -13,6 +13,15 @@ const VisualizationTab = ({
     const [filterRarity, setFilterRarity] = useState('all');
     const [filterCost, setFilterCost] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
+    const [showDeltas, setShowDeltas] = useState(false);
+
+    // Baseline positions power the deltas animation. Buckets with too few runs come
+    // back with none, so the button is disabled rather than doing nothing.
+    const hasDeltas = !!(
+        coordinateData &&
+        coordinateData.baseline_coordinates &&
+        Object.keys(coordinateData.baseline_coordinates).length > 0
+    );
 
     // Filter coordinate data based on selected filters
     const filteredCoordinateData = useMemo(() => {
@@ -49,22 +58,6 @@ const VisualizationTab = ({
     }, [coordinateData, filterType, filterRarity, filterCost]);
 
     return React.createElement(React.Fragment, null,
-        // Title section spanning full width
-        React.createElement('div', {
-            style: {
-                padding: '20px 30px',
-                backgroundColor: 'white',
-                borderBottom: '1px solid #e5e7eb'
-            }
-        },
-            React.createElement('h2', { style: { margin: '0', fontSize: '20px' } },
-                'Card 2D Visualization'
-            ),
-            React.createElement('p', { style: { margin: '8px 0 0 0', fontSize: '14px', color: '#6b7280' } },
-                'Each point represents a card. Hover over points to see details, or click to select a card.'
-            )
-        ),
-
         // Content area with sidebar and chart
         React.createElement('div', { className: 'content' },
             // Filter sidebar (left)
@@ -206,7 +199,8 @@ const VisualizationTab = ({
                 React.createElement('div', {
                     className: 'chart-section',
                     style: {
-                        height: 'calc(100vh - 280px)',
+                        position: 'relative', // anchor the floating "See Deltas" button
+                        height: 'calc(100vh - 200px)',
                         margin: '20px',
                         padding: '20px',
                         backgroundColor: '#fafafa',
@@ -214,12 +208,60 @@ const VisualizationTab = ({
                         border: '2px solid #e5e7eb'
                     }
                 },
+                    // Floating deltas button, clipping the chart's top-right corner.
+                    // Hold to play the animation; release snaps back.
+                    coordinateData && React.createElement('button', {
+                        onMouseDown: () => hasDeltas && setShowDeltas(true),
+                        onMouseUp: () => setShowDeltas(false),
+                        onMouseLeave: () => setShowDeltas(false),
+                        onTouchStart: (e) => {
+                            e.preventDefault(); // avoid the synthetic click / scroll
+                            if (hasDeltas) setShowDeltas(true);
+                        },
+                        onTouchEnd: () => setShowDeltas(false),
+                        disabled: !hasDeltas,
+                        title: hasDeltas
+                            ? 'Hold to see how the last 10 runs shifted each card'
+                            : 'Not enough runs to show deltas',
+                        style: {
+                            position: 'absolute',
+                            top: 0,
+                            right: 0,
+                            zIndex: 5,
+                            padding: '8px 16px',
+                            // Clip the corner: flush to the top-right, only the
+                            // inner (bottom-left) corner is rounded.
+                            borderRadius: '0 6px 0 10px',
+                            border: 'none',
+                            background: showDeltas ? '#4338ca' : 'rgba(17, 24, 39, 0.85)',
+                            color: hasDeltas ? 'white' : '#6b7280',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            letterSpacing: '0.3px',
+                            cursor: hasDeltas ? 'pointer' : 'not-allowed',
+                            transition: 'background 0.2s',
+                            userSelect: 'none' // holding shouldn't select the label
+                        }
+                    },
+                        // Dot always occupies its slot so the button width is fixed;
+                        // it only becomes visible (with the color change) while held.
+                        React.createElement('span', {
+                            style: {
+                                marginRight: '6px',
+                                opacity: showDeltas ? 1 : 0,
+                                transition: 'opacity 0.2s'
+                            }
+                        }, '●'),
+                        'See Deltas'
+                    ),
+
                     coordinateData
                         ? React.createElement(window.CardScatterPlot, {
                             coordinateData: filteredCoordinateData,
                             onCardClick,
                             selectedCardId,
-                            searchTerm
+                            searchTerm,
+                            showDeltas: showDeltas && hasDeltas
                         })
                         : React.createElement('div', { className: 'loading', style: { padding: '40px', textAlign: 'center' } },
                             'Loading coordinate data...'

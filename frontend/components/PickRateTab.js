@@ -13,7 +13,8 @@ const PickRateTab = ({ selectedCard, chartData, showTrend }) => {
                     showTrend && React.createElement(window.DeltaBadge, {
                         deltaPp: selectedCard.pickrate_delta_pp,
                         sufficient: selectedCard.pickrate_trend_ok
-                    })
+                    }),
+                    showTrend && React.createElement(window.InfoIcon, { term: 'delta' })
                 )
             ),
             React.createElement('div', { className: 'stat-card' },

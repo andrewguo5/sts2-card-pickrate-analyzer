@@ -15,6 +15,11 @@
        it, so returning from a character would recolor the landing page to
        whichever one was last viewed. This blue is fixed. */
     --landing-accent: #3b82f6;
+
+    /* Horizontal padding of the landing/upload white column. Shared so the
+       character band can break out to exactly the column's edges (and no
+       further, into the dark side gutters) by cancelling this value. */
+    --landing-column-pad: 24px;
 }
 
 * {
@@ -85,9 +90,11 @@ body {
     position: relative;
 }
 
-.header-home-link {
+/* The two header links are pulled out of flow so they flank the optically
+   centered title without shifting it: home on the left, upload on the right. */
+.header-home-link,
+.header-upload-link {
     position: absolute;
-    left: 30px;
     top: 50%;
     transform: translateY(-50%);
     padding: 6px 12px;
@@ -101,7 +108,16 @@ body {
     transition: background-color 0.2s;
 }
 
-.header-home-link:hover {
+.header-home-link {
+    left: 30px;
+}
+
+.header-upload-link {
+    right: 30px;
+}
+
+.header-home-link:hover,
+.header-upload-link:hover {
     background: rgba(255, 255, 255, 0.25);
 }
 
@@ -154,6 +170,17 @@ body {
     cursor: pointer;
     transition: all 0.2s;
     min-width: 180px;
+}
+
+/* The User option labels change as run counts load asynchronously, and a bare
+   <select> resizes itself to its widest current option — so the bar would blip
+   short-to-wide on every character switch. Pin a fixed width sized (by
+   measurement) to hold a typical 'name (X runs, Y total)' label; the rare very
+   long persona name ellipsizes in the closed control and is still fully legible
+   once the menu is open. */
+.filter-select--user {
+    width: 320px;
+    text-overflow: ellipsis;
 }
 
 .filter-select:hover {
@@ -476,10 +503,28 @@ tr:hover {
    Character-agnostic: renders under the :root default theme.
    ============================================================ */
 
-.landing-page {
+/* Dark full-gutter frame shared by the landing and upload pages. The outer
+   element fills the viewport width and paints the dark gutter color; a centered
+   white column of capped width sits on top, so the dark shows only in the
+   left/right margins. min-height keeps the white column reaching the viewport
+   floor even when content is short, so the dark never becomes a band below it. */
+.landing-page,
+.uploader-guide {
+    background: #111827;
+    min-height: 100vh;
+}
+
+/* One width for both pages so their white columns line up inside the frame. */
+.landing-column,
+.uploader-column {
     max-width: 900px;
     margin: 0 auto;
-    padding: 64px 24px 80px;
+    background: white;
+    min-height: 100vh;
+}
+
+.landing-column {
+    padding: 64px var(--landing-column-pad) 80px;
 }
 
 .landing-hero {
@@ -532,15 +577,14 @@ tr:hover {
     margin-top: 4px;
 }
 
-/* Full-bleed gray band behind the character row. The landing column is capped
-   at 900px and centered, so the band breaks out to the viewport edges with
-   symmetric negative margins, then pads its own content back into the column.
-   50% resolves against the element's own width, so this cancels both the auto
-   centering and the .landing-page side padding in one step. */
+/* Light band behind the character row. It fills the width of the white column
+   but stops at its edges: negative margins cancel only the column's own side
+   padding (--landing-column-pad), so the band never reaches into the dark side
+   gutters. Kept light so it reads as a panel on white, distinct from the frame. */
 .landing-section--band {
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
-    padding: 40px calc(50vw - 50%);
+    margin-left: calc(-1 * var(--landing-column-pad));
+    margin-right: calc(-1 * var(--landing-column-pad));
+    padding: 40px var(--landing-column-pad);
     background: #f3f4f6;
 }
 
@@ -564,13 +608,14 @@ tr:hover {
     gap: 16px;
 }
 
-/* Flat: a solid field of the character's color, nothing else. No border, no
-   shadow, no bevel — the rest of the page has none, and the tiles were the
-   only thing pretending to be a physical object. Hover swells the tile from
-   its center, which is the whole of the interaction. */
+/* Flat: a solid field of the character's color, edged with a dark hairline but
+   no shadow or bevel — nothing pretends to be a physical object. Hover swells
+   the tile from its center, which is the whole of the interaction. */
 .landing-character-tile {
     min-width: 0;
-    border: none;
+    /* A dark hairline reads on every character color, giving the flat tiles a
+       defined edge against the light band without a shadow or bevel. */
+    border: 2px solid rgba(0, 0, 0, 0.35);
     border-radius: 12px;
     padding: 36px 16px;
     cursor: pointer;
@@ -626,10 +671,8 @@ tr:hover {
    Uploader instructions page
    ============================================================ */
 
-.uploader-guide {
-    max-width: 760px;
-    margin: 0 auto;
-    padding: 40px 24px 80px;
+.uploader-column {
+    padding: 40px var(--landing-column-pad) 80px;
 }
 
 .uploader-back-link {
@@ -659,6 +702,30 @@ tr:hover {
     font-size: 16px;
     line-height: 1.7;
     color: #4b5563;
+}
+
+/* Fast path for returning users, sitting above the numbered steps. Tinted with
+   the fixed landing accent (never --char-primary, which drifts once a character
+   has been viewed) and given a left rule so it reads as a callout, not a step. */
+.uploader-quickrun {
+    margin-top: 32px;
+    padding: 20px 24px;
+    border-left: 4px solid var(--landing-accent);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--landing-accent) 8%, white);
+}
+
+.uploader-quickrun-heading {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 14px;
+}
+
+.uploader-quickrun-note {
+    font-size: 13px;
+    color: #6b7280;
+    margin-top: 4px;
 }
 
 .uploader-steps {

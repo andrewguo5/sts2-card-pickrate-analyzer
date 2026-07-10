@@ -1,11 +1,17 @@
 // CardScatterPlot - Interactive 2D scatter plot for card visualization
-const CardScatterPlot = ({ coordinateData, onCardClick, selectedCardId, searchTerm }) => {
+const CardScatterPlot = ({ coordinateData, onCardClick, selectedCardId, searchTerm, showDeltas }) => {
     const { useState, useEffect, useRef } = React;
     const chartRef = useRef(null);
     const chartInstanceRef = useRef(null);
+    const animationRef = useRef(null);
 
     useEffect(() => {
         if (!chartRef.current || !coordinateData || !coordinateData.coordinates) return;
+
+        // Baseline positions (coords over all runs except the most recent N) let us
+        // animate how recent play shifted each card. Absent for buckets with too
+        // few runs; those cards simply hold their current position.
+        const baselineCoordinates = coordinateData.baseline_coordinates || {};
 
         const ctx = chartRef.current.getContext('2d');
 
@@ -21,9 +27,21 @@ const CardScatterPlot = ({ coordinateData, onCardClick, selectedCardId, searchTe
             const matchesSearch = !normalizedSearch ||
                 data.name.toLowerCase().includes(normalizedSearch);
 
+            // Current position (percentage). Baseline falls back to current when the
+            // card has no baseline entry, so it stays put during the shift animation.
+            const currentX = data.x * 100;
+            const currentY = data.y * 100;
+            const baseline = baselineCoordinates[cardId];
+            const baselineX = baseline ? baseline.x * 100 : currentX;
+            const baselineY = baseline ? baseline.y * 100 : currentY;
+
             return {
-                x: data.x * 100, // Convert to percentage for display
-                y: data.y * 100,
+                x: currentX, // Convert to percentage for display
+                y: currentY,
+                currentX,
+                currentY,
+                baselineX,
+                baselineY,
                 cardId,
                 name: data.name,
                 type: data.type,
@@ -103,9 +121,48 @@ const CardScatterPlot = ({ coordinateData, onCardClick, selectedCardId, searchTe
             datasets: Object.values(datasets)
         };
 
+        // Plugin: draw a thin line from each card's baseline position to its current
+        // position while the shift animation plays, so every card's full trajectory
+        // is visible at once. Drawn beneath the points (beforeDatasetsDraw). Gated on
+        // a mutable flag the animation effect toggles, so it costs nothing when idle.
+        const shiftLinesPlugin = {
+            id: 'shiftLines',
+            beforeDatasetsDraw(chart) {
+                if (!chart.$showShiftLines) return;
+
+                const { ctx, scales: { x: xScale, y: yScale } } = chart;
+                const hasSearch = !!(searchTerm && searchTerm.trim());
+
+                ctx.save();
+                chart.data.datasets.forEach(dataset => {
+                    dataset.data.forEach(point => {
+                        // Skip zero-length lines (cards with no baseline shift) and,
+                        // during a search, cards that don't match (kept faint/quiet).
+                        if (point.baselineX === point.currentX && point.baselineY === point.currentY) return;
+
+                        const x1 = xScale.getPixelForValue(point.baselineX);
+                        const y1 = yScale.getPixelForValue(point.baselineY);
+                        const x2 = xScale.getPixelForValue(point.currentX);
+                        const y2 = yScale.getPixelForValue(point.currentY);
+
+                        ctx.beginPath();
+                        ctx.moveTo(x1, y1);
+                        ctx.lineTo(x2, y2);
+                        ctx.lineWidth = 1;
+                        ctx.strokeStyle = (hasSearch && !point.matchesSearch)
+                            ? 'rgba(120, 120, 120, 0.10)'
+                            : 'rgba(120, 120, 120, 0.45)';
+                        ctx.stroke();
+                    });
+                });
+                ctx.restore();
+            }
+        };
+
         const config = {
             type: 'scatter',
             data: chartData,
+            plugins: [shiftLinesPlugin],
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -243,6 +300,90 @@ const CardScatterPlot = ({ coordinateData, onCardClick, selectedCardId, searchTe
             }
         };
     }, [coordinateData, onCardClick, selectedCardId, searchTerm]);
+
+    // "Recent shift" animation: while the button is held, each point snaps to its
+    // baseline position (all runs except the most recent N) and accelerates to its
+    // current position, holds there briefly, then restarts — so the collective drift
+    // of the last N runs reads at a glance. Releasing snaps every point back to its
+    // current position. Runs on the already-built chart; mutates point coords.
+    useEffect(() => {
+        const chart = chartInstanceRef.current;
+        if (!chart) return;
+
+        // One cycle: accelerate from baseline to current, then rest on current.
+        const TRAVEL_MS = 750;    // baseline -> current, ease-in (accelerating)
+        const END_HOLD_MS = 400;  // rest on current before restarting
+        const CYCLE_MS = TRAVEL_MS + END_HOLD_MS;
+
+        const setPointsToCurrent = () => {
+            // The chart may have been destroyed (e.g. a filter change rebuilt it)
+            // before this runs; touching a destroyed instance throws.
+            if (chartInstanceRef.current !== chart) return;
+            chart.$showShiftLines = false;
+            chart.data.datasets.forEach(dataset => {
+                dataset.data.forEach(point => {
+                    point.x = point.currentX;
+                    point.y = point.currentY;
+                });
+            });
+            chart.update('none');
+        };
+
+        if (!showDeltas) {
+            // Not held: ensure everything sits at its true current position.
+            setPointsToCurrent();
+            return;
+        }
+
+        // Trajectory lines are only drawn while the animation plays.
+        chart.$showShiftLines = true;
+
+        // Anchor the loop's phase to elapsed time so it stays smooth across frames.
+        let startTime = null;
+
+        const frame = (now) => {
+            if (startTime === null) startTime = now;
+            const elapsed = (now - startTime) % CYCLE_MS;
+
+            // Travel phase blends a linear term (nonzero initial velocity, so points
+            // leave the baseline already moving and the traversal feels quicker) with
+            // a quartic ease-in (a snappy accelerating launch). Hold phase pins t at 1
+            // so points rest on their current position before restarting.
+            const INITIAL_VELOCITY = 0.4; // linear share; 0 = pure quartic (crawls out)
+            let t;
+            if (elapsed < TRAVEL_MS) {
+                const progress = elapsed / TRAVEL_MS;
+                const quartic = progress * progress * progress * progress;
+                t = INITIAL_VELOCITY * progress + (1 - INITIAL_VELOCITY) * quartic;
+            } else {
+                t = 1;
+            }
+
+            chart.data.datasets.forEach(dataset => {
+                dataset.data.forEach(point => {
+                    point.x = point.baselineX + (point.currentX - point.baselineX) * t;
+                    point.y = point.baselineY + (point.currentY - point.baselineY) * t;
+                });
+            });
+            chart.update('none');
+
+            animationRef.current = requestAnimationFrame(frame);
+        };
+
+        animationRef.current = requestAnimationFrame(frame);
+
+        return () => {
+            if (animationRef.current) {
+                cancelAnimationFrame(animationRef.current);
+                animationRef.current = null;
+            }
+            // Snap back to current so a release (or rebuild) never leaves points
+            // frozen mid-tween.
+            if (chartInstanceRef.current) {
+                setPointsToCurrent();
+            }
+        };
+    }, [showDeltas, coordinateData, searchTerm, selectedCardId]);
 
     if (!coordinateData || !coordinateData.coordinates) {
         return React.createElement('div', { className: 'loading', style: { padding: '40px', textAlign: 'center' } },

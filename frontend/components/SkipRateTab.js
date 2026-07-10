@@ -18,7 +18,8 @@ const SkipRateTab = ({ selectedCard, skipRateData, baselineSkipData, showTrend }
                     showTrend && React.createElement(window.DeltaBadge, {
                         deltaPp: selectedCard.skiprate_delta_pp,
                         sufficient: selectedCard.skiprate_trend_ok
-                    })
+                    }),
+                    showTrend && React.createElement(window.InfoIcon, { term: 'delta' })
                 )
             ),
             React.createElement('div', { className: 'stat-card' },

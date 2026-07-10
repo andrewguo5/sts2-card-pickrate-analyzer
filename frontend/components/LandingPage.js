@@ -48,6 +48,7 @@ const LandingPage = ({ onNavigate }) => {
     );
 
     return React.createElement('div', { className: 'landing-page' },
+        React.createElement('div', { className: 'landing-column' },
         React.createElement('div', { className: 'landing-hero' },
             React.createElement('h1', { className: 'landing-title' }, 'mbgg'),
             React.createElement('p', { className: 'landing-tagline' },
@@ -75,6 +76,7 @@ const LandingPage = ({ onNavigate }) => {
                 className: 'landing-upload-cta',
                 onClick: () => onNavigate('upload')
             }, 'Upload your runs →')
+        )
         )
     );
 };

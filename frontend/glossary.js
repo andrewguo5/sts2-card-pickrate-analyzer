@@ -39,6 +39,16 @@ window.Glossary = {
 
     },
 
+    "delta": {
+        title: "Delta",
+        short: "The percentage point shift due to the stats from the last n=10 runs.",
+        full: `The percentage point shift due to the stats from the last n=10 runs. \
+        The headline stat is computed over all of your runs; the delta compares it \
+        against the same stat computed over all runs except your 10 most recent, so \
+        it surfaces how your recent play has moved this card's pick / win / skip rate. \
+        A green up arrow means recent runs pushed the stat higher; red down, lower.`
+    },
+
     // Technical Terms
     "kernel_smoothing": {
         title: "Kernel Smoothing",

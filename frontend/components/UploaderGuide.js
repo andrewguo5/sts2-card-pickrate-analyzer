@@ -81,6 +81,7 @@ const UploaderGuide = ({ onNavigate }) => {
     );
 
     return React.createElement('div', { className: 'uploader-guide' },
+        React.createElement('div', { className: 'uploader-column' },
         React.createElement('button', {
             className: 'uploader-back-link',
             onClick: () => onNavigate('landing')
@@ -92,6 +93,17 @@ const UploaderGuide = ({ onNavigate }) => {
                 'The analytics on this site are built from run histories that players contribute. ' +
                 'The uploader reads the run files Slay the Spire 2 already saves on your machine ' +
                 'and sends the ones the server does not have yet. It takes about a minute.'
+            )
+        ),
+
+        // Fast path for the most common visitor: someone who already installed
+        // the uploader and just came back to grab the command. The access code
+        // is embedded so they can run it without a second step.
+        React.createElement('div', { className: 'uploader-quickrun' },
+            React.createElement('h2', { className: 'uploader-quickrun-heading' }, 'Already installed? Run this'),
+            React.createElement(CodeBlock, { command: `mbgg-sts2-upload --access-code ${UPLOAD_ACCESS_CODE}` }),
+            React.createElement('p', { className: 'uploader-quickrun-note' },
+                'First time here? Follow the steps below instead.'
             )
         ),
 
@@ -166,6 +178,7 @@ const UploaderGuide = ({ onNavigate }) => {
                     React.createElement('div', { className: 'uploader-trouble-fix' }, item.fix)
                 )
             )
+        )
         )
     );
 };

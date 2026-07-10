@@ -19,7 +19,8 @@ const WinRateTab = ({ selectedCard, winRateData, showTrend }) => {
                     showTrend && React.createElement(window.DeltaBadge, {
                         deltaPp: selectedCard.winrate_delta_pp,
                         sufficient: selectedCard.winrate_trend_ok
-                    })
+                    }),
+                    showTrend && React.createElement(window.InfoIcon, { term: 'delta' })
                 )
             ),
             React.createElement('div', { className: 'stat-card' },

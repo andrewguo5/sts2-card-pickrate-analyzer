@@ -1,7 +1,7 @@
 // FilterBar - Filter controls for character, mode, ascension, and user selection
 const FilterBar = ({
     selectedCharacter,
-    setSelectedCharacter,
+    onCharacterChange,
     selectedMode,
     setSelectedMode,
     selectedAscension,
@@ -24,7 +24,7 @@ const FilterBar = ({
             React.createElement('select', {
                 className: 'filter-select',
                 value: selectedCharacter,
-                onChange: (e) => setSelectedCharacter(e.target.value)
+                onChange: (e) => onCharacterChange(e.target.value)
             },
                 CHARACTERS.map(char =>
                     React.createElement('option', {
@@ -73,7 +73,7 @@ const FilterBar = ({
         React.createElement('div', { className: 'filter-group' },
             React.createElement('label', { className: 'filter-label' }, 'User'),
             React.createElement('select', {
-                className: 'filter-select',
+                className: 'filter-select filter-select--user',
                 value: selectedUser || '',
                 onChange: (e) => setSelectedUser(e.target.value || null)
             },

@@ -50,6 +50,12 @@ class CardPickRateAnalyzer:
         # Format: card_id -> act -> {"picked": count, "won": count}
         self.winrate_data = defaultdict(lambda: defaultdict(lambda: {"picked": 0, "won": 0}))
 
+        # Baseline win rate for the whole bucket: won runs / total runs, regardless
+        # of which cards were picked. Serves as the reference a card's conditional
+        # power (win rate given it was picked) is judged accretive/dilutive against.
+        self.baseline_runs_won = 0
+        self.baseline_runs_total = 0
+
         # Processed pick rates
         # Format: card_id -> floor -> pick_rate (0.0 to 1.0)
         self.raw_pickrates = defaultdict(dict)
@@ -82,6 +88,11 @@ class CardPickRateAnalyzer:
         """
         map_history = run_data.get('map_point_history', [])
         victory = run_data.get('win', False)
+
+        # Count this run toward the bucket-wide baseline win rate.
+        self.baseline_runs_total += 1
+        if victory:
+            self.baseline_runs_won += 1
 
         # Track which cards were picked from rewards in this run (for pick/skip rate analysis)
         # Format: set of card_ids picked at least once from non-shop rewards
@@ -399,12 +410,18 @@ class CardPickRateAnalyzer:
 
     def export_to_dict(self) -> Dict[str, Any]:
         """Export results to dictionary format (compatible with JSON output)."""
+        baseline_winrate = (
+            self.baseline_runs_won / self.baseline_runs_total
+            if self.baseline_runs_total > 0 else 0.0
+        )
+
         output = {
             "cards": {},
             "baseline_skip_data": {
                 "raw": dict(self.baseline_skiprates),
                 "smoothed": dict(self.smoothed_baseline_skiprates)
-            }
+            },
+            "baseline_winrate": baseline_winrate
         }
 
         for card_id in self.raw_data.keys():

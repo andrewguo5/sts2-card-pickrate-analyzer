@@ -69,6 +69,35 @@ def is_cache_fresh(cache_entry: AnalyticsCache) -> bool:
     return age < ttl
 
 
+def get_fresh_cached_analytics(
+    db: Session,
+    user_id: Optional[int],
+    character: str,
+    mode: str,
+    ascension: str,
+    version: str
+) -> Optional[dict]:
+    """Return fresh cached analytics for a bucket, or None to compute on demand.
+
+    The cache only holds the unfiltered ("all" versions) bucket, so a specific
+    version always misses and is computed live. Returns the cached pickrate_data
+    dict when a fresh entry exists, else None.
+    """
+    if version != "all":
+        return None
+
+    cache_entry = db.query(AnalyticsCache).filter(
+        AnalyticsCache.user_id.is_(None) if user_id is None else AnalyticsCache.user_id == user_id,
+        AnalyticsCache.character == character,
+        AnalyticsCache.mode == mode,
+        AnalyticsCache.ascension == ascension
+    ).first()
+
+    if cache_entry and is_cache_fresh(cache_entry):
+        return cache_entry.pickrate_data
+    return None
+
+
 def enrich_with_metadata(analytics_data: dict) -> dict:
     """
     Enrich analytics data with card metadata from Spire Codex.
@@ -123,7 +152,14 @@ def parse_mode_filter(mode: str):
         raise ValueError(f"Invalid mode filter: {mode}")
 
 
-def filter_runs(db: Session, user_id: Optional[int], character: str, mode: str, ascension: str):
+def apply_version_filter(query, version: str):
+    """Narrow a run query to a single game version, unless version is 'all'."""
+    if version != "all":
+        query = query.filter(Run.game_version == version)
+    return query
+
+
+def filter_runs(db: Session, user_id: Optional[int], character: str, mode: str, ascension: str, version: str = "all"):
     """
     Filter runs based on criteria.
 
@@ -133,6 +169,7 @@ def filter_runs(db: Session, user_id: Optional[int], character: str, mode: str, 
         character: Character filter (e.g., "CHARACTER.REGENT")
         mode: Mode filter ("singleplayer", "multiplayer", "all")
         ascension: Ascension filter ("a10", "a0-9", "all")
+        version: Game version filter (e.g., "v0.98.3"), or "all" for no filter
 
     Returns:
         List of run raw_data dictionaries
@@ -157,9 +194,30 @@ def filter_runs(db: Session, user_id: Optional[int], character: str, mode: str, 
         Run.num_players <= mode_criteria["max"]
     )
 
-    runs = query.all()
+    # Game version filter
+    query = apply_version_filter(query, version)
+
+    # Order by upload sequence (Run.id) so index reflects recency: oldest first,
+    # newest last. Keeps the "most recent N runs" slice deterministic for baseline
+    # coordinate computation.
+    runs = query.order_by(Run.id.asc()).all()
     # Decompress run data before returning
     return [decompress_run_data(run.raw_data) for run in runs]
+
+
+def build_analytics_result(pickrate_data: dict, metadata: dict) -> dict:
+    """Assemble the analytics response payload from computed pick-rate data.
+
+    Centralizes which top-level analytics blocks are surfaced so every endpoint
+    returns the same shape: cards, baseline skip data, and the bucket-wide
+    baseline win rate.
+    """
+    return {
+        "metadata": metadata,
+        "cards": pickrate_data["cards"],
+        "baseline_skip_data": pickrate_data.get("baseline_skip_data", {}),
+        "baseline_winrate": pickrate_data.get("baseline_winrate", 0.0)
+    }
 
 
 def compute_and_cache_analytics(
@@ -167,7 +225,8 @@ def compute_and_cache_analytics(
     user_id: Optional[int],
     character: str,
     mode: str,
-    ascension: str
+    ascension: str,
+    version: str = "all"
 ) -> dict:
     """
     Compute analytics and cache the result.
@@ -178,12 +237,13 @@ def compute_and_cache_analytics(
         character: Character filter
         mode: Mode filter
         ascension: Ascension filter
+        version: Game version filter (e.g., "v0.98.3"), or "all" for no filter
 
     Returns:
         Analytics data dictionary
     """
     # Filter runs
-    runs = filter_runs(db, user_id, character, mode, ascension)
+    runs = filter_runs(db, user_id, character, mode, ascension, version)
 
     # Compute pick rates (with character filter to exclude cross-class cards)
     pickrate_data = compute_pickrates(runs, bandwidth=2, character=character)
@@ -193,36 +253,37 @@ def compute_and_cache_analytics(
         "character": character,
         "ascension_level": ascension.upper().replace("A0-9", "A0-9"),
         "multiplayer_filter": mode,
+        "game_version": version,
         "runs_processed": len(runs),
         "kernel_bandwidth": 2
     }
 
-    result = {
-        "metadata": metadata,
-        "cards": pickrate_data["cards"],
-        "baseline_skip_data": pickrate_data.get("baseline_skip_data", {})
-    }
+    result = build_analytics_result(pickrate_data, metadata)
 
-    # Cache the result
-    # Delete old cache entry if exists
-    db.query(AnalyticsCache).filter(
-        AnalyticsCache.user_id == user_id,
-        AnalyticsCache.character == character,
-        AnalyticsCache.mode == mode,
-        AnalyticsCache.ascension == ascension
-    ).delete()
+    # The cache is keyed on (user_id, character, mode, ascension) only, so it can
+    # store just the unfiltered ("all" versions) bucket. A specific version is a
+    # live-compute path: never read from or written to the cache, or it would
+    # collide with the unfiltered bucket's key.
+    if version == "all":
+        # Delete old cache entry if exists
+        db.query(AnalyticsCache).filter(
+            AnalyticsCache.user_id == user_id,
+            AnalyticsCache.character == character,
+            AnalyticsCache.mode == mode,
+            AnalyticsCache.ascension == ascension
+        ).delete()
 
-    # Create new cache entry
-    cache_entry = AnalyticsCache(
-        user_id=user_id,
-        character=character,
-        mode=mode,
-        ascension=ascension,
-        runs_included=len(runs),
-        pickrate_data=result
-    )
-    db.add(cache_entry)
-    db.commit()
+        # Create new cache entry
+        cache_entry = AnalyticsCache(
+            user_id=user_id,
+            character=character,
+            mode=mode,
+            ascension=ascension,
+            runs_included=len(runs),
+            pickrate_data=result
+        )
+        db.add(cache_entry)
+        db.commit()
 
     return result
 
@@ -276,6 +337,7 @@ def get_my_stats(
     character: str = Query(..., description="Character (e.g., 'regent', 'ironclad')"),
     mode: str = Query(..., description="Mode: singleplayer, multiplayer, all"),
     ascension: str = Query(..., description="Ascension: a10, a0-9, all"),
+    version: str = Query("all", description="Game version (e.g., 'v0.98.3'), or 'all'"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -286,6 +348,7 @@ def get_my_stats(
         - character: Character short name (e.g., 'regent', 'ironclad')
         - mode: 'singleplayer', 'multiplayer', or 'all'
         - ascension: 'a10', 'a0-9', or 'all'
+        - version: game version (e.g., 'v0.98.3'), or 'all' for no filter
     """
     # Convert short character name to full ID
     character_upper = character.upper()
@@ -297,17 +360,10 @@ def get_my_stats(
             detail=f"Invalid character: {character}"
         )
 
-    # Check cache first
-    cache_entry = db.query(AnalyticsCache).filter(
-        AnalyticsCache.user_id == current_user.id,
-        AnalyticsCache.character == full_character,
-        AnalyticsCache.mode == mode,
-        AnalyticsCache.ascension == ascension
-    ).first()
-
-    # Return cached data if fresh
-    if cache_entry and is_cache_fresh(cache_entry):
-        return enrich_with_metadata(cache_entry.pickrate_data)
+    # Check cache first (unfiltered bucket only; a specific version computes live)
+    cached = get_fresh_cached_analytics(db, current_user.id, full_character, mode, ascension, version)
+    if cached is not None:
+        return enrich_with_metadata(cached)
 
     # Cache miss - compute on demand
     result = compute_and_cache_analytics(
@@ -315,7 +371,8 @@ def get_my_stats(
         current_user.id,
         full_character,
         mode,
-        ascension
+        ascension,
+        version
     )
 
     return enrich_with_metadata(result)
@@ -326,6 +383,7 @@ def get_global_stats(
     character: str = Query(..., description="Character (e.g., 'regent', 'ironclad')"),
     mode: str = Query(..., description="Mode: singleplayer, multiplayer, all"),
     ascension: str = Query(..., description="Ascension: a10, a0-9, all"),
+    version: str = Query("all", description="Game version (e.g., 'v0.98.3'), or 'all'"),
     db: Session = Depends(get_db)
 ):
     """
@@ -335,6 +393,7 @@ def get_global_stats(
         - character: Character short name (e.g., 'regent', 'ironclad')
         - mode: 'singleplayer', 'multiplayer', or 'all'
         - ascension: 'a10', 'a0-9', or 'all'
+        - version: game version (e.g., 'v0.98.3'), or 'all' for no filter
     """
     # Convert short character name to full ID
     character_upper = character.upper()
@@ -346,17 +405,10 @@ def get_global_stats(
             detail=f"Invalid character: {character}"
         )
 
-    # Check cache first (user_id=None for global)
-    cache_entry = db.query(AnalyticsCache).filter(
-        AnalyticsCache.user_id.is_(None),
-        AnalyticsCache.character == full_character,
-        AnalyticsCache.mode == mode,
-        AnalyticsCache.ascension == ascension
-    ).first()
-
-    # Return cached data if fresh
-    if cache_entry and is_cache_fresh(cache_entry):
-        return enrich_with_metadata(cache_entry.pickrate_data)
+    # Check cache first (user_id=None for global; unfiltered bucket only)
+    cached = get_fresh_cached_analytics(db, None, full_character, mode, ascension, version)
+    if cached is not None:
+        return enrich_with_metadata(cached)
 
     # Cache miss - compute on demand
     result = compute_and_cache_analytics(
@@ -364,7 +416,8 @@ def get_global_stats(
         None,  # None = global stats
         full_character,
         mode,
-        ascension
+        ascension,
+        version
     )
 
     return enrich_with_metadata(result)
@@ -442,15 +495,36 @@ def get_users_list(db: Session = Depends(get_db)):
     ]
 
 
+@router.get("/distinct-versions")
+def get_distinct_versions(db: Session = Depends(get_db)):
+    """
+    Get the distinct game versions present across all runs, newest first.
+
+    Powers the patch filter. The frontend prepends an "All Patches" ('all')
+    option; this endpoint returns only the concrete versions that have data.
+
+    Returns:
+        List of version strings (e.g., ["v0.98.3", "v0.98.2"]) sorted descending.
+    """
+    rows = db.query(Run.game_version).filter(
+        Run.game_version.isnot(None)
+    ).distinct().all()
+
+    # rows are 1-tuples; sort descending so the newest patch leads the list.
+    versions = sorted((row[0] for row in rows), reverse=True)
+    return versions
+
+
 @router.get("/users/filtered-counts")
 def get_users_filtered_counts(
     character: str = Query(..., description="Character (e.g., 'regent', 'ironclad')"),
     mode: str = Query(..., description="Mode: singleplayer, multiplayer, all"),
     ascension: str = Query(..., description="Ascension: a10, a0-9, all"),
+    version: str = Query("all", description="Game version (e.g., 'v0.98.3'), or 'all'"),
     db: Session = Depends(get_db)
 ):
     """
-    Get run counts for all users filtered by character/mode/ascension.
+    Get run counts for all users filtered by character/mode/ascension/version.
 
     Returns:
         Dictionary mapping steam_id to filtered run count
@@ -472,7 +546,7 @@ def get_users_filtered_counts(
     mode_criteria = parse_mode_filter(mode)
 
     # Query for filtered run counts per user
-    results = db.query(
+    query = db.query(
         Run.steam_id,
         func.count(Run.id).label('filtered_count')
     ).filter(
@@ -481,9 +555,9 @@ def get_users_filtered_counts(
         Run.ascension.in_(ascension_levels),
         Run.num_players >= mode_criteria["min"],
         Run.num_players <= mode_criteria["max"]
-    ).group_by(
-        Run.steam_id
-    ).all()
+    )
+    query = apply_version_filter(query, version)
+    results = query.group_by(Run.steam_id).all()
 
     # Return as dictionary for easy lookup
     return {
@@ -576,6 +650,7 @@ def get_user_stats(
     character: str = Query(..., description="Character (e.g., 'regent', 'ironclad')"),
     mode: str = Query(..., description="Mode: singleplayer, multiplayer, all"),
     ascension: str = Query(..., description="Ascension: a10, a0-9, all"),
+    version: str = Query("all", description="Game version (e.g., 'v0.98.3'), or 'all'"),
     db: Session = Depends(get_db)
 ):
     """
@@ -586,6 +661,7 @@ def get_user_stats(
         - character: Character short name (e.g., 'regent', 'ironclad')
         - mode: 'singleplayer', 'multiplayer', or 'all'
         - ascension: 'a10', 'a0-9', or 'all'
+        - version: game version (e.g., 'v0.98.3'), or 'all' for no filter
     """
     # Convert short character name to full ID
     character_upper = character.upper()
@@ -598,7 +674,7 @@ def get_user_stats(
         )
 
     # Filter runs by steam_id
-    runs = filter_runs_by_steam_id(db, steam_id, full_character, mode, ascension)
+    runs = filter_runs_by_steam_id(db, steam_id, full_character, mode, ascension, version)
 
     # Compute pick rates (with character filter to exclude cross-class cards)
     pickrate_data = compute_pickrates(runs, bandwidth=2, character=full_character)
@@ -619,21 +695,18 @@ def get_user_stats(
         "character": full_character,
         "ascension_level": ascension.upper().replace("A0-9", "A0-9"),
         "multiplayer_filter": mode,
+        "game_version": version,
         "runs_processed": len(runs),
         "kernel_bandwidth": 2,
         "steam_id": steam_id
     }
 
-    result = {
-        "metadata": metadata,
-        "cards": pickrate_data["cards"],
-        "baseline_skip_data": pickrate_data.get("baseline_skip_data", {})
-    }
+    result = build_analytics_result(pickrate_data, metadata)
 
     return enrich_with_metadata(result)
 
 
-def filter_runs_by_steam_id(db: Session, steam_id: str, character: str, mode: str, ascension: str):
+def filter_runs_by_steam_id(db: Session, steam_id: str, character: str, mode: str, ascension: str, version: str = "all"):
     """
     Filter runs by steam_id instead of user_id.
 
@@ -643,6 +716,7 @@ def filter_runs_by_steam_id(db: Session, steam_id: str, character: str, mode: st
         character: Character filter
         mode: Mode filter
         ascension: Ascension filter
+        version: Game version filter (e.g., "v0.98.3"), or "all" for no filter
 
     Returns:
         List of run raw_data dictionaries
@@ -666,6 +740,9 @@ def filter_runs_by_steam_id(db: Session, steam_id: str, character: str, mode: st
         Run.num_players <= mode_criteria["max"]
     )
 
+    # Game version filter
+    query = apply_version_filter(query, version)
+
     # Order by upload sequence (Run.id) so index reflects recency: oldest first,
     # newest last. This makes the "most recent N runs" slice deterministic.
     runs = query.order_by(Run.id.asc()).all()
@@ -673,11 +750,62 @@ def filter_runs_by_steam_id(db: Session, steam_id: str, character: str, mode: st
     return [decompress_run_data(run.raw_data) for run in runs]
 
 
+def build_coordinate_map(pickrate_data: dict) -> dict:
+    """Compute card coordinates and keep only cards that carry full metadata.
+
+    Cards without a name/type/rarity (colorless cards absent from Spire Codex)
+    are dropped so the scatter plot never renders unlabeled points. Expects
+    pickrate_data to already be metadata-enriched.
+    """
+    coordinates = compute_all_card_coordinates(pickrate_data)
+
+    result = {}
+    for card_id, coords in coordinates.items():
+        card_summary = pickrate_data.get('cards', {}).get(card_id, {}).get('summary', {})
+
+        # Skip cards without metadata (name/type/rarity missing => not in Spire Codex)
+        if not card_summary.get('name'):
+            continue
+        if not card_summary.get('type') or not card_summary.get('rarity'):
+            continue
+
+        result[card_id] = {
+            **coords,
+            'name': card_summary.get('name'),
+            'type': card_summary.get('type'),
+            'rarity': card_summary.get('rarity'),
+            'cost': card_summary.get('cost')
+        }
+
+    return result
+
+
+def compute_baseline_coordinates(runs: list, character: str) -> dict:
+    """Compute coordinates over all runs EXCEPT the most recent RECENT_RUN_WINDOW.
+
+    These "baseline" positions let the frontend animate how the last N runs
+    shifted each card's coordinates. `runs` must be ordered oldest -> newest.
+    Returns {card_id: {x, y}} for cards present in the baseline; empty when there
+    aren't enough runs to define a baseline window.
+    """
+    if len(runs) <= RECENT_RUN_WINDOW:
+        return {}
+
+    old_runs = runs[:len(runs) - RECENT_RUN_WINDOW]
+    baseline_pickrates = compute_pickrates(old_runs, bandwidth=2, character=character)
+    baseline_pickrates = enrich_with_metadata(baseline_pickrates)
+    baseline_map = build_coordinate_map(baseline_pickrates)
+
+    # Only the position is needed for the animation; drop the rest of the payload.
+    return {card_id: {'x': coords['x'], 'y': coords['y']} for card_id, coords in baseline_map.items()}
+
+
 @router.get("/card-coordinates")
 def get_card_coordinates(
     character: str = Query(..., description="Character (e.g., 'regent', 'ironclad')"),
     mode: str = Query(..., description="Mode: singleplayer, multiplayer, all"),
     ascension: str = Query(..., description="Ascension: a10, a0-9, all"),
+    version: str = Query("all", description="Game version (e.g., 'v0.98.3'), or 'all'"),
     steam_id: Optional[str] = Query(None, description="Optional Steam ID for user-specific data"),
     db: Session = Depends(get_db)
 ):
@@ -707,72 +835,44 @@ def get_card_coordinates(
             detail=f"Invalid character: {character}"
         )
 
-    # Get analytics data (either from cache or compute on demand)
+    # Fetch the bucket's runs (ordered oldest -> newest) so both current and
+    # baseline coordinates come from the same, deterministically-ordered set.
     if steam_id:
-        # User-specific data
-        runs = filter_runs_by_steam_id(db, steam_id, full_character, mode, ascension)
-        pickrate_data = compute_pickrates(runs, bandwidth=2, character=full_character)
+        runs = filter_runs_by_steam_id(db, steam_id, full_character, mode, ascension, version)
+    else:
+        runs = filter_runs(db, None, full_character, mode, ascension, version)
 
-        # Add metadata
+    # Current coordinates: use the global cache when available (unauthenticated,
+    # no steam_id); otherwise compute from the fetched runs.
+    if steam_id:
+        pickrate_data = compute_pickrates(runs, bandwidth=2, character=full_character)
         metadata = {
             "character": full_character,
             "ascension_level": ascension.upper().replace("A0-9", "A0-9"),
             "multiplayer_filter": mode,
+            "game_version": version,
             "runs_processed": len(runs),
             "kernel_bandwidth": 2,
             "steam_id": steam_id
         }
-
-        pickrate_data = {
-            "metadata": metadata,
-            "cards": pickrate_data["cards"],
-            "baseline_skip_data": pickrate_data.get("baseline_skip_data", {})
-        }
+        pickrate_data = build_analytics_result(pickrate_data, metadata)
     else:
-        # Global data - try cache first
-        cache_entry = db.query(AnalyticsCache).filter(
-            AnalyticsCache.user_id.is_(None),
-            AnalyticsCache.character == full_character,
-            AnalyticsCache.mode == mode,
-            AnalyticsCache.ascension == ascension
-        ).first()
-
-        if cache_entry and is_cache_fresh(cache_entry):
-            pickrate_data = cache_entry.pickrate_data
+        cached = get_fresh_cached_analytics(db, None, full_character, mode, ascension, version)
+        if cached is not None:
+            pickrate_data = cached
         else:
-            # Compute on demand
-            pickrate_data = compute_and_cache_analytics(db, None, full_character, mode, ascension)
+            pickrate_data = compute_and_cache_analytics(db, None, full_character, mode, ascension, version)
 
-    # Enrich with metadata
+    # Enrich with metadata, then compute the current coordinate map.
     pickrate_data = enrich_with_metadata(pickrate_data)
+    coordinates = build_coordinate_map(pickrate_data)
 
-    # Compute coordinates for all cards
-    coordinates = compute_all_card_coordinates(pickrate_data)
-
-    # Add card names and metadata to the coordinate data
-    # Exclude cards without metadata (colorless cards not in Spire Codex)
-    result = {}
-    for card_id, coords in coordinates.items():
-        card_data = pickrate_data.get('cards', {}).get(card_id, {})
-        card_summary = card_data.get('summary', {})
-
-        # Skip cards without metadata (name will be missing if metadata lookup failed)
-        if not card_summary.get('name'):
-            continue
-
-        # Skip cards without type/rarity (indicates missing metadata)
-        if not card_summary.get('type') or not card_summary.get('rarity'):
-            continue
-
-        result[card_id] = {
-            **coords,
-            'name': card_summary.get('name'),
-            'type': card_summary.get('type'),
-            'rarity': card_summary.get('rarity'),
-            'cost': card_summary.get('cost')
-        }
+    # Baseline coordinates (all runs except the most recent N) drive the "recent
+    # shift" animation on the scatter plot.
+    baseline_coordinates = compute_baseline_coordinates(runs, full_character)
 
     return {
-        'coordinates': result,
+        'coordinates': coordinates,
+        'baseline_coordinates': baseline_coordinates,
         'metadata': pickrate_data.get('metadata', {})
     }
