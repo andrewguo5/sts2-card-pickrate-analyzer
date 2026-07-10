@@ -16,16 +16,15 @@ Visit site: https://mbgg.up.railway.app/
 
 ```bash
 pip install mbgg-sts2-uploader
-mbgg-sts2-uploader --access-code YOUR_CODE
+mbgg-sts2-upload
 ```
 
-Or manually:
+The uploader prompts for an access code. To skip the prompt, pass it directly:
 ```bash
-pip install requests
-python3 sts2_uploader.py --server https://mbgg-api.up.railway.app --access-code YOUR_CODE
+mbgg-sts2-upload --access-code YOUR_CODE
 ```
 
-See `UPLOADER_README.md` for details.
+See `UPLOADER_README.md` for details, or the in-site guide at `/#/upload`.
 
 ### For Admins (Deploying)
 

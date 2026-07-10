@@ -28,6 +28,8 @@
     <script src="components/CardScatterPlot.js"></script>
     <script src="components/VisualizationTab.js"></script>
     <script src="components/CardDetail.js"></script>
+    <script src="components/LandingPage.js"></script>
+    <script src="components/UploaderGuide.js"></script>
 </head>
 <body>
     <div id="root"></div>
@@ -72,13 +74,86 @@
         // Rate-based sort options that should also switch the active detail tab.
         const SORT_TO_TAB = { pickrate: 'pickrate', winrate: 'winrate', skiprate: 'skiprate' };
 
+        // ---------------------------------------------------------------------
+        // Hash routing
+        //
+        // The app is served as static files with no build step and no history
+        // API, so routes live in location.hash. The hash is the single source of
+        // truth: navigate() only writes the hash, and a hashchange listener
+        // drives React state from it. Nothing writes `route` directly, so the
+        // URL and the rendered view cannot disagree.
+        //
+        // Grammar:
+        //   #/                    -> landing
+        //   #/analyzer            -> analyzer, default character
+        //   #/analyzer/ironclad   -> analyzer, character preselected
+        //   #/upload              -> uploader instructions
+        // Anything unrecognized falls back to the landing page.
+        // ---------------------------------------------------------------------
+        const ROUTES = { LANDING: 'landing', ANALYZER: 'analyzer', UPLOAD: 'upload' };
+        const DEFAULT_CHARACTER = 'regent';
+
+        function parseHash(hash) {
+            const [routeSegment, characterSegment] = hash.replace(/^#\/?/, '').split('/');
+
+            if (routeSegment === ROUTES.UPLOAD) {
+                return { route: ROUTES.UPLOAD, character: DEFAULT_CHARACTER };
+            }
+            if (routeSegment === ROUTES.ANALYZER) {
+                const isKnownCharacter = CHARACTERS.some(c => c.id === characterSegment);
+                return {
+                    route: ROUTES.ANALYZER,
+                    character: isKnownCharacter ? characterSegment : DEFAULT_CHARACTER
+                };
+            }
+            return { route: ROUTES.LANDING, character: DEFAULT_CHARACTER };
+        }
+
+        // Writing the hash is the only way to navigate; the listener does the rest.
+        function navigate(route, characterId) {
+            const suffix = route === ROUTES.ANALYZER && characterId ? `/${characterId}` : '';
+            window.location.hash = `#/${route === ROUTES.LANDING ? '' : route}${suffix}`;
+        }
+
+        function useHashRoute() {
+            const [location, setLocation] = useState(() => parseHash(window.location.hash));
+
+            useEffect(() => {
+                const syncFromHash = () => setLocation(parseHash(window.location.hash));
+                window.addEventListener('hashchange', syncFromHash);
+                return () => window.removeEventListener('hashchange', syncFromHash);
+            }, []);
+
+            return location;
+        }
+
         function App() {
+            const { route, character } = useHashRoute();
+
+            if (route === ROUTES.LANDING) {
+                return React.createElement(window.LandingPage, { onNavigate: navigate });
+            }
+            if (route === ROUTES.UPLOAD) {
+                return React.createElement(window.UploaderGuide, { onNavigate: navigate });
+            }
+            // Keyed on character so a landing-page pick remounts the view rather
+            // than leaving the previous character's fetched data on screen.
+            return React.createElement(window.AnalyzerView, {
+                key: character,
+                initialCharacter: character,
+                onNavigate: navigate
+            });
+        }
+
+        // The analyzer, unchanged. It mounts only on #/analyzer, so its data
+        // fetches never fire on the landing or uploader pages.
+        function AnalyzerView({ initialCharacter, onNavigate }) {
             const [data, setData] = useState(null);
             const [selectedCard, setSelectedCard] = useState(null);
             const [searchTerm, setSearchTerm] = useState('');
             const [loading, setLoading] = useState(true);
             const [error, setError] = useState(null);
-            const [selectedCharacter, setSelectedCharacter] = useState('regent');
+            const [selectedCharacter, setSelectedCharacter] = useState(initialCharacter);
             const [selectedMode, setSelectedMode] = useState('singleplayer');
             const [selectedAscension, setSelectedAscension] = useState('a10');
             const [selectedUser, setSelectedUser] = useState(null); // null = global stats
@@ -396,6 +471,11 @@
                 React.createElement('div', { className: 'scrollable-content' },
                     // Header
                     React.createElement('div', { className: 'header' },
+                        React.createElement('button', {
+                            className: 'header-home-link',
+                            onClick: () => onNavigate(ROUTES.LANDING),
+                            title: 'Back to all characters'
+                        }, '← All characters'),
                         React.createElement('h1', null, 'STS2 Card Pick Rate Analyzer'),
                         React.createElement('div', { className: 'subtitle' }, 'Card pick rates by floor')
                     ),
