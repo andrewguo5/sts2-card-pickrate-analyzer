@@ -1,5 +1,5 @@
 // WinRateTab - Win rate analysis by act
-const WinRateTab = ({ selectedCard, winRateData }) => {
+const WinRateTab = ({ selectedCard, winRateData, showTrend }) => {
     // Get overall win rate (runs won where card picked / runs where card picked)
     const overallData = selectedCard.winrate_data?.overall || { picked: 0, won: 0 };
     const totalPicked = overallData.picked;
@@ -15,7 +15,11 @@ const WinRateTab = ({ selectedCard, winRateData }) => {
                     React.createElement(window.InfoIcon, { term: 'win_rate' })
                 ),
                 React.createElement('div', { className: 'stat-value' },
-                    `${(overallWinRate * 100).toFixed(1)}%`
+                    `${(overallWinRate * 100).toFixed(1)}%`,
+                    showTrend && React.createElement(window.DeltaBadge, {
+                        deltaPp: selectedCard.winrate_delta_pp,
+                        sufficient: selectedCard.winrate_trend_ok
+                    })
                 )
             ),
             React.createElement('div', { className: 'stat-card' },

@@ -14,6 +14,7 @@
     <script src="glossary.js"></script>
     <script src="components/config.js"></script>
     <script src="components/InfoIcon.js"></script>
+    <script src="components/DeltaBadge.js"></script>
     <script src="components/HelpPanel.js"></script>
     <script src="components/ChartComponent.js"></script>
     <script src="components/SkipRateChart.js"></script>
@@ -34,6 +35,42 @@
     <script>
         const { useState, useEffect, useMemo } = React;
         const { API_BASE_URL, CHARACTERS, MODES, ASCENSIONS } = window.AppConfig;
+
+        // Overall skip rate for a card, summed across floors. Shared by the sort
+        // comparator and the sidebar badge resolver so they can't diverge.
+        function overallSkipRate(card) {
+            const offered = Object.values(card.skip_data || {}).reduce((sum, d) => sum + (d.offered || 0), 0);
+            const skipped = Object.values(card.skip_data || {}).reduce((sum, d) => sum + (d.skipped || 0), 0);
+            return offered > 0 ? skipped / offered : 0;
+        }
+
+        // Given a flattened card and the active detail tab, return the stat the
+        // sidebar badge (and its trend arrow) should display for that tab.
+        function resolveTabStat(card, activeTab) {
+            if (activeTab === 'winrate') {
+                return {
+                    rate: card.winrates_by_act?.overall || 0,
+                    deltaPp: card.winrate_delta_pp,
+                    sufficient: card.winrate_trend_ok
+                };
+            }
+            if (activeTab === 'skiprate') {
+                return {
+                    rate: overallSkipRate(card),
+                    deltaPp: card.skiprate_delta_pp,
+                    sufficient: card.skiprate_trend_ok
+                };
+            }
+            return {
+                rate: card.overall_pickrate || 0,
+                deltaPp: card.pickrate_delta_pp,
+                sufficient: card.pickrate_trend_ok
+            };
+        }
+        window.resolveTabStat = resolveTabStat;
+
+        // Rate-based sort options that should also switch the active detail tab.
+        const SORT_TO_TAB = { pickrate: 'pickrate', winrate: 'winrate', skiprate: 'skiprate' };
 
         function App() {
             const [data, setData] = useState(null);
@@ -56,6 +93,14 @@
             const [coordinateData, setCoordinateData] = useState(null);
             const [loadingCoordinates, setLoadingCoordinates] = useState(false);
             const [viewMode, setViewMode] = useState('table'); // 'table' or 'visualization'
+
+            // Changing the sort to a rate-based option also switches the detail tab
+            // (and thus the sidebar badges) so sort, tab, and badges stay coherent.
+            // Offered/Alphabetical sorts leave the tab untouched.
+            const handleSortChange = (value) => {
+                setSortBy(value);
+                if (SORT_TO_TAB[value]) setActiveTab(SORT_TO_TAB[value]);
+            };
 
             // Apply character theme colors
             useEffect(() => {
@@ -273,16 +318,10 @@
                         const bWinRate = b.winrates_by_act?.overall || 0;
                         return bWinRate - aWinRate;
                     } else if (sortBy === 'skiprate') {
-                        // Sort by skip rate (least skipped first = lowest skip rate first)
-                        // Calculate overall skip rate from skip_data
-                        const aSkipped = Object.values(a.skip_data || {}).reduce((sum, data) => sum + (data.skipped || 0), 0);
-                        const aOffered = Object.values(a.skip_data || {}).reduce((sum, data) => sum + (data.offered || 0), 0);
-                        const aSkipRate = aOffered > 0 ? aSkipped / aOffered : 1;
-
-                        const bSkipped = Object.values(b.skip_data || {}).reduce((sum, data) => sum + (data.skipped || 0), 0);
-                        const bOffered = Object.values(b.skip_data || {}).reduce((sum, data) => sum + (data.offered || 0), 0);
-                        const bSkipRate = bOffered > 0 ? bSkipped / bOffered : 1;
-
+                        // Sort by skip rate (least skipped first = lowest skip rate first).
+                        // Cards with no offers sort last (treated as fully skipped).
+                        const aSkipRate = a.skip_data && Object.keys(a.skip_data).length ? overallSkipRate(a) : 1;
+                        const bSkipRate = b.skip_data && Object.keys(b.skip_data).length ? overallSkipRate(b) : 1;
                         return aSkipRate - bSkipRate; // Ascending order (least skipped first)
                     } else if (sortBy === 'alphabetical') {
                         return a.name.localeCompare(b.name);
@@ -401,11 +440,13 @@
                             searchTerm,
                             onSearchChange: setSearchTerm,
                             sortBy,
-                            onSortChange: setSortBy,
+                            onSortChange: handleSortChange,
                             filterType,
                             onFilterTypeChange: setFilterType,
                             filterRarity,
-                            onFilterRarityChange: setFilterRarity
+                            onFilterRarityChange: setFilterRarity,
+                            activeTab, // sidebar badges follow the selected detail tab
+                            showTrend: !!selectedUser // trend arrows only exist on the personal stats path
                         }),
 
                     // CardDetail main panel
@@ -421,7 +462,8 @@
                                 winRateData,
                                 baselineSkipData: data?.baseline_skip_data,
                                 activeTab,
-                                setActiveTab
+                                setActiveTab,
+                                showTrend: !!selectedUser // trend deltas only exist on the personal stats path
                             })
                     )
                 ) // End of table content

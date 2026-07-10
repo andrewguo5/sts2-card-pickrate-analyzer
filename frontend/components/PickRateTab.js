@@ -1,5 +1,5 @@
 // PickRateTab - Pick rate analysis view
-const PickRateTab = ({ selectedCard, chartData }) => {
+const PickRateTab = ({ selectedCard, chartData, showTrend }) => {
     return React.createElement(React.Fragment, null,
         // Summary stats grid
         React.createElement('div', { className: 'summary-stats' },
@@ -9,7 +9,11 @@ const PickRateTab = ({ selectedCard, chartData }) => {
                     React.createElement(window.InfoIcon, { term: 'pick_rate' })
                 ),
                 React.createElement('div', { className: 'stat-value' },
-                    `${(selectedCard.overall_pickrate * 100).toFixed(1)}%`
+                    `${(selectedCard.overall_pickrate * 100).toFixed(1)}%`,
+                    showTrend && React.createElement(window.DeltaBadge, {
+                        deltaPp: selectedCard.pickrate_delta_pp,
+                        sufficient: selectedCard.pickrate_trend_ok
+                    })
                 )
             ),
             React.createElement('div', { className: 'stat-card' },

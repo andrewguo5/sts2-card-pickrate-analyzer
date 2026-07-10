@@ -5,6 +5,10 @@
     --char-secondary: #1e3a8a;
     --char-accent: #93c5fd;
     --char-gradient: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+
+    /* Trend delta indicators (recent-play up/down arrows) */
+    --trend-up: #16a34a;
+    --trend-down: #dc2626;
 }
 
 * {

@@ -10,7 +10,9 @@ const CardList = ({
     filterType,
     onFilterTypeChange,
     filterRarity,
-    onFilterRarityChange
+    onFilterRarityChange,
+    activeTab,
+    showTrend
 }) => {
     return React.createElement('div', { className: 'sidebar' },
         // Search and filters box
@@ -69,8 +71,10 @@ const CardList = ({
         // Card list
         React.createElement('div', { className: 'card-list' },
             cards.length > 0
-                ? cards.map(card =>
-                    React.createElement('div', {
+                ? cards.map(card => {
+                    // Badge % and trend arrow follow the active detail tab.
+                    const { rate, deltaPp, sufficient } = window.resolveTabStat(card, activeTab);
+                    return React.createElement('div', {
                         key: card.id,
                         className: `card-item ${selectedCard?.id === card.id ? 'selected' : ''}`,
                         onClick: () => onSelectCard(card)
@@ -78,10 +82,15 @@ const CardList = ({
                         React.createElement('div', { className: 'card-name' }, card.name || card.id.replace('CARD.', '')),
                         React.createElement('div', { className: 'card-stats' },
                             React.createElement('span', { className: 'stat-badge' }, `${card.total_offered} offered`),
-                            React.createElement('span', { className: 'stat-badge' }, `${(card.overall_pickrate * 100).toFixed(1)}%`)
+                            React.createElement('span', { className: 'stat-badge' }, `${(rate * 100).toFixed(1)}%`),
+                            showTrend && React.createElement(window.DeltaBadge, {
+                                deltaPp,
+                                sufficient,
+                                hideWhenFlat: true
+                            })
                         )
-                    )
-                )
+                    );
+                })
                 : React.createElement('div', { style: { padding: '20px', textAlign: 'center', color: '#9ca3af' } },
                     'No cards match filters'
                 )

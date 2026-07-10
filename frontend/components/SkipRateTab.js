@@ -1,5 +1,5 @@
 // SkipRateTab - Skip rate analysis view
-const SkipRateTab = ({ selectedCard, skipRateData, baselineSkipData }) => {
+const SkipRateTab = ({ selectedCard, skipRateData, baselineSkipData, showTrend }) => {
     // Calculate overall skip rate
     const totalOffered = Object.values(selectedCard.skip_data || {}).reduce((sum, counts) => sum + counts.offered, 0);
     const totalSkipped = Object.values(selectedCard.skip_data || {}).reduce((sum, counts) => sum + counts.skipped, 0);
@@ -14,7 +14,11 @@ const SkipRateTab = ({ selectedCard, skipRateData, baselineSkipData }) => {
                     React.createElement(window.InfoIcon, { term: 'skip_rate' })
                 ),
                 React.createElement('div', { className: 'stat-value' },
-                    `${(overallSkipRate * 100).toFixed(1)}%`
+                    `${(overallSkipRate * 100).toFixed(1)}%`,
+                    showTrend && React.createElement(window.DeltaBadge, {
+                        deltaPp: selectedCard.skiprate_delta_pp,
+                        sufficient: selectedCard.skiprate_trend_ok
+                    })
                 )
             ),
             React.createElement('div', { className: 'stat-card' },

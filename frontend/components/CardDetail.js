@@ -1,5 +1,5 @@
 // CardDetail - Main panel displaying card statistics with tabs for different analyses
-const CardDetail = ({ selectedCard, chartData, skipRateData, winRateData, baselineSkipData, activeTab, setActiveTab }) => {
+const CardDetail = ({ selectedCard, chartData, skipRateData, winRateData, baselineSkipData, activeTab, setActiveTab, showTrend }) => {
     if (!selectedCard) {
         return React.createElement('div', { className: 'empty-state' },
             React.createElement('div', { className: 'empty-state-icon' }, '📊'),
@@ -29,9 +29,9 @@ const CardDetail = ({ selectedCard, chartData, skipRateData, winRateData, baseli
 
         // Tab content
         React.createElement('div', { className: 'tab-content' },
-            activeTab === 'pickrate' && React.createElement(window.PickRateTab, { selectedCard, chartData }),
-            activeTab === 'skiprate' && React.createElement(window.SkipRateTab, { selectedCard, skipRateData, baselineSkipData }),
-            activeTab === 'winrate' && React.createElement(window.WinRateTab, { selectedCard, winRateData })
+            activeTab === 'pickrate' && React.createElement(window.PickRateTab, { selectedCard, chartData, showTrend }),
+            activeTab === 'skiprate' && React.createElement(window.SkipRateTab, { selectedCard, skipRateData, baselineSkipData, showTrend }),
+            activeTab === 'winrate' && React.createElement(window.WinRateTab, { selectedCard, winRateData, showTrend })
         )
     );
 };
