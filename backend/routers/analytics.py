@@ -874,5 +874,8 @@ def get_card_coordinates(
     return {
         'coordinates': coordinates,
         'baseline_coordinates': baseline_coordinates,
-        'metadata': pickrate_data.get('metadata', {})
+        'metadata': pickrate_data.get('metadata', {}),
+        # Bucket-wide baseline win rate, surfaced so the scatter can draw a
+        # reference line on its win-rate (Y) axis.
+        'baseline_winrate': pickrate_data.get('baseline_winrate', 0.0)
     }

@@ -145,8 +145,47 @@
             });
         }
 
-        // The analyzer, unchanged. It mounts only on #/analyzer, so its data
-        // fetches never fire on the landing or uploader pages.
+        // Reload persistence
+        //
+        // The hash carries route + character, but the in-analyzer selections
+        // (mode, ascension, user, active tab, view mode) live in component state
+        // and would reset on reload. We mirror just those to sessionStorage so a
+        // reload lands you where you were — without contaminating the URL and
+        // without stickiness across days: a fresh tab starts clean.
+        const ANALYZER_STATE_KEY = 'mbgg:analyzer-view';
+
+        function readPersistedAnalyzerState() {
+            try {
+                return JSON.parse(sessionStorage.getItem(ANALYZER_STATE_KEY)) || {};
+            } catch {
+                return {}; // corrupt/blocked storage falls back to defaults
+            }
+        }
+
+        // A useState whose value is mirrored into the analyzer's sessionStorage
+        // blob under `key`. Reads the stored value on first mount, writes on every
+        // change. Keeping one blob (not one key per field) keeps storage tidy.
+        function usePersistedAnalyzerState(key, defaultValue) {
+            const [value, setValue] = useState(() => {
+                const stored = readPersistedAnalyzerState();
+                return key in stored ? stored[key] : defaultValue;
+            });
+
+            useEffect(() => {
+                const stored = readPersistedAnalyzerState();
+                stored[key] = value;
+                try {
+                    sessionStorage.setItem(ANALYZER_STATE_KEY, JSON.stringify(stored));
+                } catch {
+                    /* storage full/blocked — persistence is best-effort */
+                }
+            }, [key, value]);
+
+            return [value, setValue];
+        }
+
+        // The analyzer. It mounts only on #/analyzer, so its data fetches never
+        // fire on the landing or uploader pages.
         function AnalyzerView({ initialCharacter, onNavigate }) {
             const [data, setData] = useState(null);
             const [selectedCard, setSelectedCard] = useState(null);
@@ -154,20 +193,21 @@
             const [loading, setLoading] = useState(true);
             const [error, setError] = useState(null);
             const [selectedCharacter, setSelectedCharacter] = useState(initialCharacter);
-            const [selectedMode, setSelectedMode] = useState('singleplayer');
-            const [selectedAscension, setSelectedAscension] = useState('a10');
-            const [selectedUser, setSelectedUser] = useState(null); // null = global stats
+            // Persisted across reload (sessionStorage) so the view isn't reset.
+            const [selectedMode, setSelectedMode] = usePersistedAnalyzerState('mode', 'singleplayer');
+            const [selectedAscension, setSelectedAscension] = usePersistedAnalyzerState('ascension', 'a10');
+            const [selectedUser, setSelectedUser] = usePersistedAnalyzerState('user', null); // null = global stats
             const [usersList, setUsersList] = useState([]);
             const [usernameCache, setUsernameCache] = useState({});
             const [filteredRunCounts, setFilteredRunCounts] = useState({}); // steam_id -> filtered count
             const [sortBy, setSortBy] = useState('offered');
             const [filterType, setFilterType] = useState('all');
             const [filterRarity, setFilterRarity] = useState('all');
-            const [activeTab, setActiveTab] = useState('pickrate');
+            const [activeTab, setActiveTab] = usePersistedAnalyzerState('tab', 'pickrate');
             const [isGlossaryOpen, setIsGlossaryOpen] = useState(false);
             const [coordinateData, setCoordinateData] = useState(null);
             const [loadingCoordinates, setLoadingCoordinates] = useState(false);
-            const [viewMode, setViewMode] = useState('table'); // 'table' or 'visualization'
+            const [viewMode, setViewMode] = usePersistedAnalyzerState('viewMode', 'table'); // 'table' or 'visualization'
 
             // Changing the sort to a rate-based option also switches the detail tab
             // (and thus the sidebar badges) so sort, tab, and badges stay coherent.
@@ -482,7 +522,7 @@
                             className: 'header-upload-link',
                             onClick: () => onNavigate(ROUTES.UPLOAD),
                             title: 'Upload your runs'
-                        }, 'Upload runs →')
+                        }, 'Upload runs')
                     ),
 
                     // FilterBar (sticky within scrollable content)
@@ -512,7 +552,8 @@
                     // MetadataBar
                     data && React.createElement(window.MetadataBar, {
                         metadata: data.metadata,
-                        usernameCache: usernameCache
+                        usernameCache: usernameCache,
+                        baselineWinrate: data.baseline_winrate
                     }),
 
                     // Content area
@@ -552,6 +593,7 @@
                                 skipRateData,
                                 winRateData,
                                 baselineSkipData: data?.baseline_skip_data,
+                                baselineWinrate: data?.baseline_winrate,
                                 activeTab,
                                 setActiveTab,
                                 showTrend: !!selectedUser // trend deltas only exist on the personal stats path

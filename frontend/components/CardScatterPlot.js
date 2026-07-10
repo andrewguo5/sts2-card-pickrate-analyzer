@@ -1,5 +1,5 @@
 // CardScatterPlot - Interactive 2D scatter plot for card visualization
-const CardScatterPlot = ({ coordinateData, onCardClick, selectedCardId, searchTerm, showDeltas }) => {
+const CardScatterPlot = ({ coordinateData, onCardClick, selectedCardId, searchTerm, showDeltas, baselineWinrate }) => {
     const { useState, useEffect, useRef } = React;
     const chartRef = useRef(null);
     const chartInstanceRef = useRef(null);
@@ -274,7 +274,32 @@ const CardScatterPlot = ({ coordinateData, onCardClick, selectedCardId, searchTe
                                 label: {
                                     display: false
                                 }
-                            }
+                            },
+                            // The Y-axis is win rate, so the bucket-wide baseline win
+                            // rate lands as a horizontal benchmark: points above it
+                            // beat the average run, points below trail it. Only drawn
+                            // when a positive baseline is present.
+                            ...(typeof baselineWinrate === 'number' && baselineWinrate > 0
+                                ? {
+                                    baselineWinrateLine: {
+                                        type: 'line',
+                                        yMin: baselineWinrate * 100,
+                                        yMax: baselineWinrate * 100,
+                                        borderColor: 'rgba(31, 41, 55, 0.55)',
+                                        borderWidth: 2,
+                                        borderDash: [6, 4],
+                                        label: {
+                                            display: true,
+                                            content: `Avg. WR ${(baselineWinrate * 100).toFixed(1)}%`,
+                                            position: 'end',
+                                            backgroundColor: 'rgba(31, 41, 55, 0.75)',
+                                            color: 'white',
+                                            font: { size: 11, weight: 'bold' },
+                                            padding: { x: 6, y: 3 }
+                                        }
+                                    }
+                                }
+                                : {})
                         }
                     }
                 },
@@ -299,7 +324,7 @@ const CardScatterPlot = ({ coordinateData, onCardClick, selectedCardId, searchTe
                 chartInstanceRef.current.destroy();
             }
         };
-    }, [coordinateData, onCardClick, selectedCardId, searchTerm]);
+    }, [coordinateData, onCardClick, selectedCardId, searchTerm, baselineWinrate]);
 
     // "Recent shift" animation: while the button is held, each point snaps to its
     // baseline position (all runs except the most recent N) and accelerates to its

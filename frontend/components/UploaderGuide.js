@@ -85,7 +85,7 @@ const UploaderGuide = ({ onNavigate }) => {
         React.createElement('button', {
             className: 'uploader-back-link',
             onClick: () => onNavigate('landing')
-        }, '← Back'),
+        }, '← Return to Home'),
 
         React.createElement('div', { className: 'uploader-header' },
             React.createElement('h1', { className: 'uploader-title' }, 'Upload your runs'),

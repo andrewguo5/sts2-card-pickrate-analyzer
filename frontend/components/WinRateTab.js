@@ -1,5 +1,5 @@
 // WinRateTab - Win rate analysis by act
-const WinRateTab = ({ selectedCard, winRateData, showTrend }) => {
+const WinRateTab = ({ selectedCard, winRateData, baselineWinrate, showTrend }) => {
     // Get overall win rate (runs won where card picked / runs where card picked)
     const overallData = selectedCard.winrate_data?.overall || { picked: 0, won: 0 };
     const totalPicked = overallData.picked;
@@ -38,7 +38,7 @@ const WinRateTab = ({ selectedCard, winRateData, showTrend }) => {
             React.createElement('h3', { className: 'chart-title' }, 'Win Rate by Act Picked'),
             React.createElement('div', { className: 'chart-container' },
                 winRateData && winRateData.length > 0
-                    ? React.createElement(window.WinRateChart, { winRateData })
+                    ? React.createElement(window.WinRateChart, { winRateData, baselineWinrate })
                     : React.createElement('p', null, 'No data available for this card')
             )
         ),

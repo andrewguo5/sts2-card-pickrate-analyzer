@@ -39,6 +39,15 @@ window.Glossary = {
 
     },
 
+    "baseline_winrate": {
+        title: "Avg. Win Rate",
+        short: "How often any run in the current filter wins, regardless of which cards it holds.",
+        full: `How often any run in the current filter wins, regardless of which cards it holds.\
+        \n(# of winning runs) / (total # of runs) for the selected character, ascension, mode, and user.\
+        \nIt is the benchmark a card's own win rate is measured against: a card whose win rate sits \
+        above this line wins more often than the average run, and one below it trails the average.`
+    },
+
     "delta": {
         title: "Delta",
         short: "The percentage point shift due to the stats from the last n=10 runs.",

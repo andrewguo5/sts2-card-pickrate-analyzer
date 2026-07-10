@@ -64,3 +64,4 @@ class AnalyticsResponse(BaseModel):
     metadata: Dict[str, Any]
     cards: Dict[str, Any]
     baseline_skip_data: Optional[Dict[str, Any]] = None
+    baseline_winrate: Optional[float] = None

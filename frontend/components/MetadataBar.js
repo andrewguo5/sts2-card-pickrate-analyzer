@@ -1,6 +1,10 @@
 // MetadataBar - Displays metadata about the current dataset
-const MetadataBar = ({ metadata, usernameCache }) => {
+const MetadataBar = ({ metadata, usernameCache, baselineWinrate }) => {
     if (!metadata) return null;
+
+    // Bucket-wide baseline win rate (won/total over the current filter), shown
+    // as an always-visible benchmark. Arrives 0..1; null/undefined => hidden.
+    const hasBaselineWinrate = typeof baselineWinrate === 'number' && baselineWinrate > 0;
 
     // Get username from cache if available, otherwise show steam ID
     const getUserDisplay = (steamId) => {
@@ -35,6 +39,10 @@ const MetadataBar = ({ metadata, usernameCache }) => {
         metadata.steam_id && React.createElement('div', { className: 'metadata-item' },
             React.createElement('span', { className: 'metadata-label' }, 'User: '),
             React.createElement('span', { className: 'metadata-value' }, getUserDisplay(metadata.steam_id))
+        ),
+        hasBaselineWinrate && React.createElement('div', { className: 'metadata-item' },
+            React.createElement('span', { className: 'metadata-label' }, 'Avg. Win Rate: '),
+            React.createElement('span', { className: 'metadata-value' }, `${(baselineWinrate * 100).toFixed(1)}%`)
         )
     );
 };

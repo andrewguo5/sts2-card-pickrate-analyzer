@@ -201,8 +201,10 @@ const VisualizationTab = ({
                     style: {
                         position: 'relative', // anchor the floating "See Deltas" button
                         height: 'calc(100vh - 200px)',
-                        margin: '20px',
-                        padding: '20px',
+                        // Tighter top gap so the chart starts higher; sides/bottom
+                        // keep their breathing room. Height is unchanged.
+                        margin: '8px 20px 20px',
+                        padding: '8px 20px 20px',
                         backgroundColor: '#fafafa',
                         borderRadius: '8px',
                         border: '2px solid #e5e7eb'
@@ -261,7 +263,8 @@ const VisualizationTab = ({
                             onCardClick,
                             selectedCardId,
                             searchTerm,
-                            showDeltas: showDeltas && hasDeltas
+                            showDeltas: showDeltas && hasDeltas,
+                            baselineWinrate: coordinateData.baseline_winrate
                         })
                         : React.createElement('div', { className: 'loading', style: { padding: '40px', textAlign: 'center' } },
                             'Loading coordinate data...'
