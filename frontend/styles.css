@@ -90,13 +90,19 @@ body {
     position: relative;
 }
 
-/* The two header links are pulled out of flow so they flank the optically
-   centered title without shifting it: home on the left, upload on the right. */
+/* The home link and the right-side action cluster are pulled out of flow so they
+   flank the optically centered title without shifting it: home on the left, the
+   glossary + upload buttons on the right. */
 .header-home-link,
-.header-upload-link {
+.header-actions {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
+}
+
+.header-home-link,
+.header-glossary-link,
+.header-upload-link {
     padding: 6px 12px;
     border: 1px solid rgba(255, 255, 255, 0.35);
     border-radius: 6px;
@@ -112,11 +118,27 @@ body {
     left: 30px;
 }
 
-.header-upload-link {
+/* Right cluster: "?" glossary button then "Upload runs", laid out as a row so
+   the glossary sits just left of upload. */
+.header-actions {
     right: 30px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Compact circular "?" — narrower than the text buttons around it. */
+.header-glossary-link {
+    padding: 6px 0;
+    width: 30px;
+    text-align: center;
+    border-radius: 50%;
+    font-size: 15px;
+    line-height: 1;
 }
 
 .header-home-link:hover,
+.header-glossary-link:hover,
 .header-upload-link:hover {
     background: rgba(255, 255, 255, 0.25);
 }
@@ -193,6 +215,121 @@ body {
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--char-primary) 10%, transparent);
 }
 
+/* Patch filter — a dropdown trigger (styled like .filter-select) that opens a
+   checkbox-tree popover. The .filter-group anchors the absolutely-positioned
+   panel; it sits inline in the .filters flex row like the other filter groups. */
+.patch-filter {
+    position: relative;
+}
+
+.patch-filter-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 180px;
+}
+
+.patch-filter-caret {
+    color: #9ca3af;
+    font-size: 12px;
+}
+
+.patch-filter-panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 200;
+    width: 300px;
+    max-height: 60vh;
+    display: flex;
+    flex-direction: column;
+    background: #111827;
+    border: 2px solid #374151;
+    border-radius: 8px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+}
+
+.patch-filter-actions {
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #374151;
+    flex-shrink: 0;
+}
+
+.patch-filter-action {
+    flex: 1;
+    padding: 6px 10px;
+    background: #1f2937;
+    color: #d1d5db;
+    border: 1px solid #374151;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.patch-filter-action:hover {
+    background: #374151;
+    border-color: var(--char-primary);
+    color: white;
+}
+
+.patch-filter-tree {
+    overflow-y: auto;
+    padding: 6px 0;
+}
+
+/* One selectable row (leaf, group header, or child). The whole row is a <label>
+   so clicking anywhere toggles its checkbox. */
+.patch-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: background 0.12s;
+}
+
+.patch-row:hover {
+    background: #1f2937;
+}
+
+.patch-row--group {
+    font-weight: 600;
+}
+
+.patch-row--child {
+    padding-left: 34px;
+}
+
+.patch-checkbox {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--char-primary);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.patch-version {
+    color: white;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.patch-tag {
+    margin-left: auto;
+    color: #9ca3af;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+}
+
 .metadata {
     background: #f3f4f6;
     padding: 10px 30px;
@@ -218,7 +355,10 @@ body {
 
 .content {
     display: grid;
-    grid-template-columns: 350px 1fr;
+    /* Match the mobile sidebar pane width (~390px, one phone viewport) so the
+       filter palette lays out identically on both — enough room for square
+       cost boxes. */
+    grid-template-columns: 390px 1fr;
     gap: 0;
     flex: 1;
     overflow: hidden;
@@ -233,11 +373,8 @@ body {
 
 .search-box {
     padding: 20px;
-    position: sticky;
-    top: 0;
     background: #f9fafb;
     border-bottom: 1px solid #e5e7eb;
-    z-index: 10;
 }
 
 .search-input {
@@ -884,4 +1021,287 @@ tr:hover {
     font-size: 14px;
     line-height: 1.6;
     color: #4b5563;
+}
+
+/* ============================================================
+   Mobile responsive layout (analyzer)
+   The two toggle/back controls exist in the DOM on every viewport
+   but are desktop-hidden here; the media block below reveals and
+   restyles the analyzer for narrow screens. Desktop is untouched.
+   ============================================================ */
+.filters-toggle { display: none; }
+.mobile-back-button { display: none; }
+
+/* On desktop these two wrappers must not exist as layout boxes, or they would
+   break the .filters flex row (their children would stack instead of flowing in
+   a row). display:contents dissolves each wrapper so its children participate
+   directly in .filters. The mobile media query re-materializes them as real flex
+   containers (a column for the dropdowns, a row for the view controls). */
+.filters-expandable,
+.filters-controls { display: contents; }
+
+/* Mobile layout: narrow screens OR short-landscape phones (which are wider than
+   768px but too short for the desktop layout). This condition MUST stay identical
+   to MOBILE_BREAKPOINT in index.html so the CSS and the JS useIsMobile() hook
+   switch together. */
+@media (max-width: 768px), (max-height: 500px) and (orientation: landscape) {
+    /* --- Fixed viewport cage: each pane scrolls independently ---
+       The document itself does not scroll on mobile. The header + filter bar
+       stay pinned at the top; below them the master-detail track fills the
+       remaining height, and each pane owns its own vertical scroll. This is
+       what lets the list and detail keep separate scroll positions for free —
+       switching panes is a pure horizontal slide with no shared scroll to
+       reset (which previously snapped the list to the top mid-animation).
+       100dvh (dynamic viewport height) tracks the mobile URL bar so the cage
+       fills the real visible area. */
+    .container {
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;
+    }
+    .scrollable-content {
+        /* Header + filters pin here; the track below scrolls internally, so
+           this wrapper itself never scrolls. Clip the off-screen slide pane. */
+        overflow: hidden;
+        min-height: 0; /* allow the flex child (.content) to shrink and scroll */
+    }
+
+    /* --- Compact header --- */
+    .header {
+        padding: 12px 12px;
+    }
+    .header h1 {
+        font-size: 18px;
+    }
+    .header .subtitle {
+        font-size: 12px;
+    }
+    /* Shrink and pull the flanking controls in so they clear the smaller title. */
+    .header-home-link,
+    .header-glossary-link,
+    .header-upload-link {
+        font-size: 11px;
+        padding: 4px 8px;
+    }
+    .header-home-link {
+        left: 10px;
+    }
+    .header-actions {
+        right: 10px;
+        gap: 8px;
+    }
+    /* Keep the compact circular "?" round at the smaller size. */
+    .header-glossary-link {
+        padding: 4px 0;
+        width: 26px;
+    }
+
+    /* --- Filter bar becomes a collapsible full-width block --- */
+    .filters {
+        /* Must scroll away with the page, so drop the desktop stickiness. A
+           wrapping row lets the Filters toggle and the View switch share one
+           line (order 0 + 1), while the expandable dropdowns wrap to a full
+           line below (order 2, flex-basis:100%) — reclaiming vertical space. */
+        position: static;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        padding: 10px 12px;
+        gap: 10px;
+    }
+    /* Filters toggle shares the top row with the View switch: it takes the
+       remaining width on the left, the View switch sits at the right. */
+    .filters-toggle {
+        order: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex: 1 1 auto;
+        padding: 10px 14px;
+        background: #374151;
+        color: white;
+        border: 2px solid #4b5563;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    /* The dropdowns stack vertically on their own full-width line below the
+       toggle/View row (order:2 + flex-basis:100% forces the wrap). */
+    .filters-expandable {
+        order: 2;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        flex: 0 0 100%;
+    }
+    .filters.filters-collapsed .filters-expandable {
+        display: none;
+    }
+    .filter-group {
+        width: 100%;
+    }
+    /* Every select fills the row; override the desktop fixed/min widths. */
+    .filter-select,
+    .filter-select--user {
+        min-width: 0;
+        width: 100%;
+    }
+
+    /* Standalone view controls: the View switch, sitting to the RIGHT of the
+       Filters toggle on the same top row (order:1). Never collapses — it's not
+       a data filter — so it stays reachable whether or not the dropdowns are open. */
+    .filters-controls {
+        order: 1;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 0 0 auto;
+    }
+    /* The desktop inline marginLeft:20px would misalign it as the row's first
+       item; the row's own gap handles spacing on mobile. */
+    .filters-controls .view-toggle-group {
+        margin-left: 0 !important;
+        width: auto;
+    }
+    /* Drop the "View" label on mobile — the Table/Chart switch is self-evident,
+       and the label sits above the toggle, needlessly raising the row's height. */
+    .filters-controls .view-toggle-group .filter-label {
+        display: none;
+    }
+
+    /* --- Metadata bar: shrink and let it wrap; it scrolls away --- */
+    .metadata {
+        padding: 8px 12px;
+        gap: 8px 16px;
+        font-size: 12px;
+    }
+    .metadata-item {
+        font-size: 12px;
+    }
+
+    /* --- Master-detail slide-over (Table view only) ---
+       Kill the desktop 2-column grid and rebuild .content--table as a 200%-wide
+       flex track that fills the height left below the pinned header/filters. Each
+       child is 50% of that track == 100% of the viewport; translating the
+       track by -50% swaps the visible pane. Each pane scrolls internally, so
+       the two keep independent scroll positions. The Chart view (.content--viz)
+       has no slide-over and opts out — see its own rule below. */
+    .content--table {
+        display: flex;
+        flex: 1; /* fill the height under the pinned header + filter bar */
+        width: 200%;
+        grid-template-columns: none;
+        overflow: hidden; /* the panes scroll, not the track */
+        min-height: 0;
+        transform: translateX(0);
+        transition: transform 0.3s ease;
+    }
+    .content--table.mobile-pane-detail {
+        transform: translateX(-50%);
+    }
+    /* Each pane is exactly one viewport wide and owns its own vertical scroll,
+       so leaving one and returning preserves its position with no JS. Scoped to
+       the table track so the viz sidebar is NOT forced to a 50% pane width. */
+    .content--table > .sidebar,
+    .content--table > .main-panel {
+        width: 50%;
+        flex: 0 0 50%;
+        height: 100%;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch; /* momentum scroll on iOS */
+    }
+    .content--table > .sidebar {
+        border-right: none;
+    }
+    .content--table > .main-panel {
+        padding: 16px 12px;
+    }
+
+    /* --- Chart view: single-column stack (no slide-over) ---
+       The viz has no master-detail track, so on mobile it stacks the filter
+       sidebar above the scatter and scrolls as one column. The outer wrapper's
+       inline overflow:hidden is relaxed so this column owns the scroll. */
+    .viz-view-wrapper {
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        min-height: 0; /* let this flex child scroll instead of growing the cage */
+    }
+    .content--viz {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        /* Grow to the natural height of sidebar + chart so the wrapper scrolls
+           the whole column (sidebar scrolls away above the chart). */
+        flex: 0 0 auto;
+    }
+    .content--viz > .sidebar {
+        width: 100%;
+        height: auto;
+        overflow: visible;
+        border-right: none;
+        flex: 0 0 auto; /* don't compress the filters — let them scroll away */
+    }
+    .content--viz > .main-panel {
+        flex: 0 0 auto; /* keep the chart at its full height, don't shrink it */
+    }
+    /* Give the scatter real vertical room in the scrolling column (its inline
+       desktop height is calc(100vh - 200px), which is too tall stacked). */
+    .viz-chart-section {
+        height: 70dvh !important;
+        margin: 8px 12px 16px !important;
+        padding: 8px 12px 16px !important;
+    }
+
+    /* --- Back button (shown only inside the detail pane on mobile) --- */
+    .mobile-back-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 16px;
+        padding: 8px 14px;
+        background: #f3f4f6;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #374151;
+        cursor: pointer;
+    }
+
+    /* --- Scale detail content down for the narrow pane --- */
+    .card-title {
+        font-size: 22px;
+    }
+    .summary-stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    .stat-value {
+        font-size: 20px;
+    }
+    /* Tabs can overflow their row; let them scroll horizontally instead of wrapping. */
+    .tab-navigation {
+        overflow-x: auto;
+    }
+    .tab-button {
+        padding: 10px 14px;
+        font-size: 14px;
+        white-space: nowrap;
+    }
+    .chart-container {
+        padding: 12px;
+    }
+    .chart-section {
+        margin-top: 20px;
+    }
+
+    /* --- Card list: larger touch targets --- */
+    .card-item {
+        padding: 14px 15px;
+    }
+    .card-stats {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
 }

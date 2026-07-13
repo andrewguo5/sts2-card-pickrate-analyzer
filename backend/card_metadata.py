@@ -50,6 +50,9 @@ def load_card_metadata():
                     'rarity': card['rarity'],
                     'cost': card['cost'],
                     'star_cost': card.get('star_cost'),
+                    # X-cost cards report a flattened numeric cost (usually 0),
+                    # so this flag is the only reliable way to distinguish them.
+                    'is_x_cost': card.get('is_x_cost', False),
                     'color': card['color'],
                     'description': card['description'],
                     'image_url': card.get('image_url'),

@@ -9,11 +9,17 @@ const VisualizationTab = ({
     selectedUser
 }) => {
     const { useState, useMemo } = React;
-    const [filterType, setFilterType] = useState('all');
-    const [filterRarity, setFilterRarity] = useState('all');
-    const [filterCost, setFilterCost] = useState('all');
+    // Multi-select filters — empty array means "show all" for that dimension.
+    // Independent from the Table view's own filter state.
+    const [filterTypes, setFilterTypes] = useState([]);
+    const [filterRarities, setFilterRarities] = useState([]);
+    const [filterCosts, setFilterCosts] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [showDeltas, setShowDeltas] = useState(false);
+
+    const toggleType = (value) => setFilterTypes(prev => window.toggleInArray(prev, value));
+    const toggleRarity = (value) => setFilterRarities(prev => window.toggleInArray(prev, value));
+    const toggleCost = (value) => setFilterCosts(prev => window.toggleInArray(prev, value));
 
     // Baseline positions power the deltas animation. Buckets with too few runs come
     // back with none, so the button is disabled rather than doing nothing.
@@ -29,24 +35,11 @@ const VisualizationTab = ({
 
         const filteredCoords = {};
         Object.entries(coordinateData.coordinates).forEach(([cardId, data]) => {
-            // Type filter
-            if (filterType !== 'all' && data.type !== filterType) {
-                return;
-            }
-
-            // Rarity filter
-            if (filterRarity !== 'all' && data.rarity !== filterRarity) {
-                return;
-            }
-
-            // Cost filter
-            if (filterCost !== 'all') {
-                const cardCost = data.cost;
-                if (filterCost === '0' && cardCost !== 0) return;
-                if (filterCost === '1' && cardCost !== 1) return;
-                if (filterCost === '2' && cardCost !== 2) return;
-                if (filterCost === '3+' && (cardCost === null || cardCost === undefined || cardCost < 3)) return;
-            }
+            // Each filter narrows only when its selection is non-empty; an empty
+            // selection means "show all" for that dimension.
+            if (filterTypes.length && !filterTypes.includes(data.type)) return;
+            if (filterRarities.length && !filterRarities.includes(data.rarity)) return;
+            if (filterCosts.length && !filterCosts.includes(window.costBucket(data.cost, data.is_x_cost))) return;
 
             filteredCoords[cardId] = data;
         });
@@ -55,126 +48,30 @@ const VisualizationTab = ({
             ...coordinateData,
             coordinates: filteredCoords
         };
-    }, [coordinateData, filterType, filterRarity, filterCost]);
+    }, [coordinateData, filterTypes, filterRarities, filterCosts]);
 
     return React.createElement(React.Fragment, null,
-        // Content area with sidebar and chart
-        React.createElement('div', { className: 'content' },
+        // Content area with sidebar and chart. .content--viz shares the desktop
+        // grid with the Table but opts out of the Table's mobile slide-over track
+        // (see .content--table); on mobile it stacks the sidebar above the chart.
+        React.createElement('div', { className: 'content content--viz' },
             // Filter sidebar (left)
             React.createElement('div', { className: 'sidebar' },
                 React.createElement('div', { style: { padding: '20px' } },
                     React.createElement('h3', { style: { marginTop: 0, marginBottom: '15px', fontSize: '16px' } }, 'Filters'),
 
-                // Search input
-                React.createElement('div', { style: { marginBottom: '15px' } },
-                    React.createElement('label', {
-                        style: {
-                            display: 'block',
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            color: '#9ca3af',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px',
-                            marginBottom: '8px'
-                        }
-                    }, 'Search'),
-                    React.createElement('input', {
-                        type: 'text',
-                        className: 'search-input',
-                        placeholder: 'Search cards...',
-                        value: searchTerm,
-                        onChange: (e) => setSearchTerm(e.target.value),
-                        style: {
-                            width: '100%',
-                            padding: '8px 12px',
-                            border: '2px solid #374151',
-                            borderRadius: '6px',
-                            background: '#111827',
-                            color: 'white',
-                            fontSize: '14px',
-                            fontWeight: '500'
-                        }
-                    })
-                ),
-
-                // Type filter
-                React.createElement('div', { style: { marginBottom: '15px' } },
-                    React.createElement('label', {
-                        style: {
-                            display: 'block',
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            color: '#9ca3af',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px',
-                            marginBottom: '8px'
-                        }
-                    }, 'Type'),
-                    React.createElement('select', {
-                        className: 'filter-select',
-                        value: filterType,
-                        onChange: (e) => setFilterType(e.target.value),
-                        style: { width: '100%' }
-                    },
-                        React.createElement('option', { value: 'all' }, 'All Types'),
-                        React.createElement('option', { value: 'Attack' }, 'Attack'),
-                        React.createElement('option', { value: 'Skill' }, 'Skill'),
-                        React.createElement('option', { value: 'Power' }, 'Power')
-                    )
-                ),
-
-                // Rarity filter
-                React.createElement('div', { style: { marginBottom: '15px' } },
-                    React.createElement('label', {
-                        style: {
-                            display: 'block',
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            color: '#9ca3af',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px',
-                            marginBottom: '8px'
-                        }
-                    }, 'Rarity'),
-                    React.createElement('select', {
-                        className: 'filter-select',
-                        value: filterRarity,
-                        onChange: (e) => setFilterRarity(e.target.value),
-                        style: { width: '100%' }
-                    },
-                        React.createElement('option', { value: 'all' }, 'All Rarities'),
-                        React.createElement('option', { value: 'Common' }, 'Common'),
-                        React.createElement('option', { value: 'Uncommon' }, 'Uncommon'),
-                        React.createElement('option', { value: 'Rare' }, 'Rare')
-                    )
-                ),
-
-                // Cost filter
-                React.createElement('div', { style: { marginBottom: '15px' } },
-                    React.createElement('label', {
-                        style: {
-                            display: 'block',
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            color: '#9ca3af',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px',
-                            marginBottom: '8px'
-                        }
-                    }, 'Cost'),
-                    React.createElement('select', {
-                        className: 'filter-select',
-                        value: filterCost,
-                        onChange: (e) => setFilterCost(e.target.value),
-                        style: { width: '100%' }
-                    },
-                        React.createElement('option', { value: 'all' }, 'All Costs'),
-                        React.createElement('option', { value: '0' }, '0'),
-                        React.createElement('option', { value: '1' }, '1'),
-                        React.createElement('option', { value: '2' }, '2'),
-                        React.createElement('option', { value: '3+' }, '3+')
-                    )
-                ),
+                // Search + Type/Rarity/Cost palette — shared with the Table sidebar
+                // so the two views can't drift apart.
+                React.createElement(window.SearchFilterBlock, {
+                    searchTerm,
+                    onSearchChange: setSearchTerm,
+                    filterTypes,
+                    filterRarities,
+                    filterCosts,
+                    onToggleType: toggleType,
+                    onToggleRarity: toggleRarity,
+                    onToggleCost: toggleCost
+                }),
 
                 // Card count
                 coordinateData && coordinateData.coordinates && React.createElement('div', {
@@ -197,7 +94,7 @@ const VisualizationTab = ({
             React.createElement('div', { className: 'main-panel' },
                 // Chart with border
                 React.createElement('div', {
-                    className: 'chart-section',
+                    className: 'chart-section viz-chart-section',
                     style: {
                         position: 'relative', // anchor the floating "See Deltas" button
                         height: 'calc(100vh - 200px)',

@@ -19,6 +19,9 @@
     <script src="components/ChartComponent.js"></script>
     <script src="components/SkipRateChart.js"></script>
     <script src="components/WinRateChart.js"></script>
+    <script src="components/PatchFilter.js"></script>
+    <script src="components/FilterPalette.js"></script>
+    <script src="components/SearchFilterBlock.js"></script>
     <script src="components/FilterBar.js"></script>
     <script src="components/MetadataBar.js"></script>
     <script src="components/CardList.js"></script>
@@ -127,6 +130,27 @@
             return location;
         }
 
+        // True on phone-sized viewports — narrow screens OR short-landscape phones
+        // (wider than 768px but too short for the desktop layout). Drives the
+        // analyzer's mobile master-detail behavior: the desktop side-by-side grid
+        // stays mounted at larger sizes, so all mobile-only logic keys off this.
+        // This string MUST stay identical to the CSS @media condition in
+        // styles.css so the JS and the layout switch together.
+        const MOBILE_BREAKPOINT = '(max-width: 768px), (max-height: 500px) and (orientation: landscape)';
+
+        function useIsMobile() {
+            const [isMobile, setIsMobile] = useState(() => window.matchMedia(MOBILE_BREAKPOINT).matches);
+
+            useEffect(() => {
+                const query = window.matchMedia(MOBILE_BREAKPOINT);
+                const sync = () => setIsMobile(query.matches);
+                query.addEventListener('change', sync);
+                return () => query.removeEventListener('change', sync);
+            }, []);
+
+            return isMobile;
+        }
+
         function App() {
             const { route, character } = useHashRoute();
 
@@ -197,17 +221,49 @@
             const [selectedMode, setSelectedMode] = usePersistedAnalyzerState('mode', 'singleplayer');
             const [selectedAscension, setSelectedAscension] = usePersistedAnalyzerState('ascension', 'a10');
             const [selectedUser, setSelectedUser] = usePersistedAnalyzerState('user', null); // null = global stats
+            // Patch (game version) selection. 'all' = every patch (default, fast
+            // cache path); otherwise an array of selected version strings. Lifted
+            // to a comma-joined `version` query param below. The tree that drives
+            // the picker is fetched once from /distinct-versions.
+            const [selectedPatches, setSelectedPatches] = usePersistedAnalyzerState('patches', 'all');
+            const [patchTree, setPatchTree] = useState([]);
             const [usersList, setUsersList] = useState([]);
             const [usernameCache, setUsernameCache] = useState({});
             const [filteredRunCounts, setFilteredRunCounts] = useState({}); // steam_id -> filtered count
             const [sortBy, setSortBy] = useState('offered');
-            const [filterType, setFilterType] = useState('all');
-            const [filterRarity, setFilterRarity] = useState('all');
+            // Card filters are multi-select: an empty array means "show all" for
+            // that dimension. Shared FilterPalette drives Type / Rarity / Cost.
+            const [filterTypes, setFilterTypes] = useState([]);
+            const [filterRarities, setFilterRarities] = useState([]);
+            const [filterCosts, setFilterCosts] = useState([]);
             const [activeTab, setActiveTab] = usePersistedAnalyzerState('tab', 'pickrate');
             const [isGlossaryOpen, setIsGlossaryOpen] = useState(false);
             const [coordinateData, setCoordinateData] = useState(null);
             const [loadingCoordinates, setLoadingCoordinates] = useState(false);
             const [viewMode, setViewMode] = usePersistedAnalyzerState('viewMode', 'table'); // 'table' or 'visualization'
+
+            // Mobile-only view state. On phones the list and detail are a
+            // horizontal slide-over ('list' <-> 'detail'); on desktop both panes
+            // are always visible so this is inert. The filter block collapses by
+            // default on mobile to reclaim vertical space.
+            const isMobile = useIsMobile();
+            const [mobilePane, setMobilePane] = useState('list');
+            const [filtersCollapsed, setFiltersCollapsed] = useState(true);
+
+            // Tapping a card selects it and, on mobile, slides to the detail
+            // pane. Each pane is its own scroll container (see styles.css), so
+            // the list keeps its scroll position on its own while the detail is
+            // shown — no scroll bookkeeping needed here.
+            const handleSelectCard = (card) => {
+                setSelectedCard(card);
+                setMobilePane('detail');
+            };
+
+            // Return to the list. Its scroll position was preserved by its own
+            // scroll container, so we only reverse the slide.
+            const handleBackToList = () => {
+                setMobilePane('list');
+            };
 
             // Changing the sort to a rate-based option also switches the detail tab
             // (and thus the sidebar badges) so sort, tab, and badges stay coherent.
@@ -247,19 +303,35 @@
                     .catch(err => console.error('Error fetching users:', err));
             }, []);
 
-            // Fetch filtered run counts when character/mode/ascension changes
+            // Fetch the patch taxonomy tree once on mount (drives the picker).
+            useEffect(() => {
+                fetch(`${API_BASE_URL}/api/analytics/distinct-versions`)
+                    .then(response => response.json())
+                    .then(tree => setPatchTree(Array.isArray(tree) ? tree : []))
+                    .catch(err => console.error('Error fetching patch tree:', err));
+            }, []);
+
+            // The selected patches as a `version` query-param value: 'all' (no
+            // filter, cache fast path) or the selected versions comma-joined.
+            const versionParam = useMemo(
+                () => (selectedPatches === 'all' ? 'all' : selectedPatches.join(',')),
+                [selectedPatches]
+            );
+
+            // Fetch filtered run counts when character/mode/ascension/patch changes
             useEffect(() => {
                 const params = new URLSearchParams({
                     character: selectedCharacter,
                     mode: selectedMode,
-                    ascension: selectedAscension
+                    ascension: selectedAscension,
+                    version: versionParam
                 });
 
                 fetch(`${API_BASE_URL}/api/analytics/users/filtered-counts?${params}`)
                     .then(response => response.json())
                     .then(counts => setFilteredRunCounts(counts))
                     .catch(err => console.error('Error fetching filtered run counts:', err));
-            }, [selectedCharacter, selectedMode, selectedAscension]);
+            }, [selectedCharacter, selectedMode, selectedAscension, versionParam]);
 
             // Fetch coordinate data when filters change
             useEffect(() => {
@@ -268,7 +340,8 @@
                 const params = new URLSearchParams({
                     character: selectedCharacter,
                     mode: selectedMode,
-                    ascension: selectedAscension
+                    ascension: selectedAscension,
+                    version: versionParam
                 });
 
                 if (selectedUser) {
@@ -286,14 +359,15 @@
                         setCoordinateData(null);
                         setLoadingCoordinates(false);
                     });
-            }, [selectedCharacter, selectedMode, selectedAscension, selectedUser]);
+            }, [selectedCharacter, selectedMode, selectedAscension, selectedUser, versionParam]);
 
             // Track previous filter values to detect what changed
             const prevFiltersRef = React.useRef({
                 character: selectedCharacter,
                 mode: selectedMode,
                 ascension: selectedAscension,
-                user: selectedUser
+                user: selectedUser,
+                version: versionParam
             });
 
             useEffect(() => {
@@ -307,6 +381,7 @@
                     prevFilters.character === selectedCharacter &&
                     prevFilters.mode === selectedMode &&
                     prevFilters.ascension === selectedAscension &&
+                    prevFilters.version === versionParam &&
                     prevFilters.user !== selectedUser
                 );
 
@@ -322,14 +397,16 @@
                     character: selectedCharacter,
                     mode: selectedMode,
                     ascension: selectedAscension,
-                    user: selectedUser
+                    user: selectedUser,
+                    version: versionParam
                 };
 
                 // Build API request params
                 const params = new URLSearchParams({
                     character: selectedCharacter,
                     mode: selectedMode,
-                    ascension: selectedAscension
+                    ascension: selectedAscension,
+                    version: versionParam
                 });
 
                 // Choose endpoint based on whether a user is selected
@@ -381,7 +458,7 @@
                         setData(null);
                         setLoading(false);
                     });
-            }, [selectedCharacter, selectedMode, selectedAscension, selectedUser]);
+            }, [selectedCharacter, selectedMode, selectedAscension, selectedUser, versionParam]);
 
             const sortedCards = useMemo(() => {
                 if (!data) return [];
@@ -408,13 +485,17 @@
                         return false;
                     }
 
-                    // Type filter
-                    if (filterType !== 'all' && card.type !== filterType) {
+                    // Multi-select filters — an empty array means "show all" for
+                    // that dimension, so only a non-empty set narrows the results.
+                    if (filterTypes.length && !filterTypes.includes(card.type)) {
                         return false;
                     }
 
-                    // Rarity filter
-                    if (filterRarity !== 'all' && card.rarity !== filterRarity) {
+                    if (filterRarities.length && !filterRarities.includes(card.rarity)) {
+                        return false;
+                    }
+
+                    if (filterCosts.length && !filterCosts.includes(window.costBucket(card.cost, card.is_x_cost))) {
                         return false;
                     }
 
@@ -445,7 +526,7 @@
                 });
 
                 return cards;
-            }, [data, searchTerm, sortBy, filterType, filterRarity]);
+            }, [data, searchTerm, sortBy, filterTypes, filterRarities, filterCosts]);
 
             // Default selection on first load: pick the top card by overall pick rate
             // so the detail panel isn't empty when the page opens. Only applies when
@@ -516,13 +597,23 @@
                             onClick: () => onNavigate(ROUTES.LANDING),
                             title: 'Back to all characters'
                         }, '← All characters'),
-                        React.createElement('h1', null, 'STS2 Card Pick Rate Analyzer'),
-                        React.createElement('div', { className: 'subtitle' }, 'Card pick rates by floor'),
-                        React.createElement('button', {
-                            className: 'header-upload-link',
-                            onClick: () => onNavigate(ROUTES.UPLOAD),
-                            title: 'Upload your runs'
-                        }, 'Upload runs')
+                        React.createElement('h1', null, 'mbgg'),
+                        // Right-side controls: a compact "?" glossary button sits
+                        // just left of "Upload runs". Grouped so they flank the
+                        // optically centered title as one right-anchored cluster.
+                        React.createElement('div', { className: 'header-actions' },
+                            React.createElement('button', {
+                                className: 'header-glossary-link',
+                                onClick: () => setIsGlossaryOpen(true),
+                                title: 'Glossary',
+                                'aria-label': 'Open glossary'
+                            }, '?'),
+                            React.createElement('button', {
+                                className: 'header-upload-link',
+                                onClick: () => onNavigate(ROUTES.UPLOAD),
+                                title: 'Upload your runs'
+                            }, 'Upload runs')
+                        )
                     ),
 
                     // FilterBar (sticky within scrollable content)
@@ -539,14 +630,21 @@
                         setSelectedMode,
                         selectedAscension,
                         setSelectedAscension,
+                        patchTree,
+                        selectedPatches,
+                        setSelectedPatches,
                         selectedUser,
                         setSelectedUser,
                         usersList,
                         usernameCache,
                         filteredRunCounts,
-                        onOpenGlossary: () => setIsGlossaryOpen(true),
                         viewMode,
-                        setViewMode
+                        setViewMode,
+                        // Mobile: the dropdowns collapse behind a toggle to save
+                        // vertical space. Inert on desktop (toggle is CSS-hidden,
+                        // the expandable region always shows).
+                        filtersCollapsed,
+                        onToggleFilters: () => setFiltersCollapsed(prev => !prev)
                     }),
 
                     // MetadataBar
@@ -557,7 +655,14 @@
                     }),
 
                     // Content area
-                viewMode === 'table' ? React.createElement('div', { className: 'content' },
+                viewMode === 'table' ? React.createElement('div', {
+                    // .content--table carries the mobile master-detail slide-over
+                    // track (200%-wide); mobile-pane-detail slides it to the detail
+                    // pane. On desktop neither matters and the shared grid shows
+                    // both panes side by side. The Chart view uses .content--viz,
+                    // which has no slide-over.
+                    className: `content content--table${isMobile && mobilePane === 'detail' ? ' mobile-pane-detail' : ''}`
+                },
                     // CardList sidebar
                     loading || error || !data
                         ? React.createElement('div', { className: 'sidebar' },
@@ -568,21 +673,27 @@
                         : React.createElement(window.CardList, {
                             cards: sortedCards,
                             selectedCard,
-                            onSelectCard: setSelectedCard,
+                            // On mobile, selecting also slides to the detail pane.
+                            onSelectCard: handleSelectCard,
                             searchTerm,
                             onSearchChange: setSearchTerm,
                             sortBy,
                             onSortChange: handleSortChange,
-                            filterType,
-                            onFilterTypeChange: setFilterType,
-                            filterRarity,
-                            onFilterRarityChange: setFilterRarity,
+                            filterTypes,
+                            onToggleType: (value) => setFilterTypes(prev => window.toggleInArray(prev, value)),
+                            filterRarities,
+                            onToggleRarity: (value) => setFilterRarities(prev => window.toggleInArray(prev, value)),
+                            filterCosts,
+                            onToggleCost: (value) => setFilterCosts(prev => window.toggleInArray(prev, value)),
                             activeTab, // sidebar badges follow the selected detail tab
                             showTrend: !!selectedUser // trend arrows only exist on the personal stats path
                         }),
 
-                    // CardDetail main panel
-                    React.createElement('div', { className: 'main-panel' },
+                    // CardDetail main panel. Keyed on the card id so the panel
+                    // (its own scroll container on mobile) remounts per card and
+                    // opens at the top rather than inheriting the previous card's
+                    // scroll offset.
+                    React.createElement('div', { className: 'main-panel', key: selectedCard?.id || 'empty' },
                         loading || error || !data
                             ? React.createElement('div', { className: 'loading', style: { padding: '40px', textAlign: 'center' } },
                                 loading ? 'Loading...' : error ? `Error loading data: ${error}` : 'No data available'
@@ -596,11 +707,19 @@
                                 baselineWinrate: data?.baseline_winrate,
                                 activeTab,
                                 setActiveTab,
-                                showTrend: !!selectedUser // trend deltas only exist on the personal stats path
+                                showTrend: !!selectedUser, // trend deltas only exist on the personal stats path
+                                // Renders the mobile-only back control; slides the track back to the list.
+                                onBack: handleBackToList
                             })
                     )
                 ) // End of table content
-                : React.createElement('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' } },
+                : React.createElement('div', {
+                    className: 'viz-view-wrapper',
+                    // overflow:hidden suits desktop (the chart fills a fixed area);
+                    // on mobile the .viz-view-wrapper rule relaxes it so the inner
+                    // .content--viz column can scroll (filters stacked above chart).
+                    style: { display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }
+                },
                     // Visualization view with title spanning full width
                     loadingCoordinates
                         ? React.createElement('div', { className: 'loading', style: { padding: '40px', textAlign: 'center' } },

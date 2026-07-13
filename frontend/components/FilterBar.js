@@ -6,18 +6,38 @@ const FilterBar = ({
     setSelectedMode,
     selectedAscension,
     setSelectedAscension,
+    patchTree,
+    selectedPatches,
+    setSelectedPatches,
     selectedUser,
     setSelectedUser,
     usersList,
     usernameCache,
     filteredRunCounts,
-    onOpenGlossary,
     viewMode,
-    setViewMode
+    setViewMode,
+    filtersCollapsed,
+    onToggleFilters
 }) => {
     const { CHARACTERS, MODES, ASCENSIONS } = window.AppConfig;
 
-    return React.createElement('div', { className: 'filters' },
+    return React.createElement('div', {
+        // filters-collapsed only affects mobile (it hides .filters-expandable via
+        // CSS). On desktop the toggle is hidden and the expandable always shows.
+        className: `filters${filtersCollapsed ? ' filters-collapsed' : ''}`
+    },
+        // Mobile-only toggle. CSS-hidden on desktop; on mobile it's the sole
+        // visible control when collapsed, so the filter bar stays compact.
+        React.createElement('button', {
+            className: 'filters-toggle',
+            onClick: onToggleFilters
+        },
+            React.createElement('span', null, 'Filters'),
+            React.createElement('span', null, filtersCollapsed ? '▾' : '▴')
+        ),
+
+        // Everything below collapses behind the toggle on mobile.
+        React.createElement('div', { className: 'filters-expandable' },
         // Character filter
         React.createElement('div', { className: 'filter-group' },
             React.createElement('label', { className: 'filter-label' }, 'Character'),
@@ -69,6 +89,14 @@ const FilterBar = ({
             )
         ),
 
+        // Patch (game version) filter — a checkbox tree in a dropdown popover.
+        // Only renders once the taxonomy tree has loaded.
+        patchTree && patchTree.length > 0 && React.createElement(window.PatchFilter, {
+            tree: patchTree,
+            selection: selectedPatches,
+            onChange: setSelectedPatches
+        }),
+
         // User filter
         React.createElement('div', { className: 'filter-group' },
             React.createElement('label', { className: 'filter-label' }, 'User'),
@@ -96,11 +124,17 @@ const FilterBar = ({
                     }, displayText);
                 })
             )
-        ),
+        )
+        ), // End of .filters-expandable — only the data filters collapse on mobile
 
-        // View mode toggle (binary slider)
+        // Standalone view controls (View toggle + Glossary). Grouped as a sibling
+        // of .filters-expandable so they stay visible on mobile when the filter
+        // dropdowns collapse. display:contents on desktop dissolves this wrapper
+        // so both controls flow in the .filters row exactly as before.
+        React.createElement('div', { className: 'filters-controls' },
+        // View mode toggle (binary slider).
         React.createElement('div', {
-            className: 'filter-group',
+            className: 'filter-group view-toggle-group',
             style: { marginLeft: '20px' }
         },
             React.createElement('label', { className: 'filter-label' }, 'View'),
@@ -174,39 +208,8 @@ const FilterBar = ({
                     }
                 })
             )
-        ),
-
-        // Glossary button (on the right)
-        React.createElement('button', {
-            className: 'glossary-button',
-            onClick: onOpenGlossary,
-            style: {
-                marginLeft: 'auto',
-                padding: '8px 16px',
-                backgroundColor: '#374151',
-                color: 'white',
-                border: '2px solid #4b5563',
-                borderRadius: '6px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                transition: 'all 0.2s'
-            },
-            onMouseEnter: (e) => {
-                e.currentTarget.style.backgroundColor = '#4b5563';
-                e.currentTarget.style.borderColor = '#6b7280';
-            },
-            onMouseLeave: (e) => {
-                e.currentTarget.style.backgroundColor = '#374151';
-                e.currentTarget.style.borderColor = '#4b5563';
-            }
-        },
-            React.createElement('span', { style: { fontSize: '16px' } }, '?'),
-            React.createElement('span', null, 'Glossary')
         )
+        ) // End of .filters-controls
     );
 };
 

@@ -60,7 +60,7 @@ const CardScatterPlot = ({ coordinateData, onCardClick, selectedCardId, searchTe
         const typeColors = {
             'Attack': 'rgba(220, 53, 69, 0.7)',      // Red
             'Skill': 'rgba(40, 167, 69, 0.7)',       // Green
-            'Power': 'rgba(255, 193, 7, 0.7)',       // Yellow/Gold
+            'Power': 'rgba(59, 130, 246, 0.7)',      // Blue (matches STS2 power-blue)
             'Curse': 'rgba(108, 117, 125, 0.7)',     // Gray
             'Status': 'rgba(23, 162, 184, 0.7)'      // Cyan
         };

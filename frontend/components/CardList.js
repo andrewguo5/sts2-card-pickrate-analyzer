@@ -7,27 +7,19 @@ const CardList = ({
     onSearchChange,
     sortBy,
     onSortChange,
-    filterType,
-    onFilterTypeChange,
-    filterRarity,
-    onFilterRarityChange,
+    filterTypes,
+    onToggleType,
+    filterRarities,
+    onToggleRarity,
+    filterCosts,
+    onToggleCost,
     activeTab,
     showTrend
 }) => {
     return React.createElement('div', { className: 'sidebar' },
         // Search and filters box
         React.createElement('div', { className: 'search-box' },
-            // Search input
-            React.createElement('input', {
-                type: 'text',
-                className: 'search-input',
-                placeholder: 'Search cards...',
-                value: searchTerm,
-                onChange: (e) => onSearchChange(e.target.value),
-                style: { marginBottom: '10px' }
-            }),
-
-            // Sort dropdown
+            // Sort dropdown — on top so Search sits directly above the palette.
             React.createElement('select', {
                 className: 'filter-select',
                 value: sortBy,
@@ -41,31 +33,18 @@ const CardList = ({
                 React.createElement('option', { value: 'alphabetical' }, 'Sort: Alphabetical')
             ),
 
-            // Type filter dropdown
-            React.createElement('select', {
-                className: 'filter-select',
-                value: filterType,
-                onChange: (e) => onFilterTypeChange(e.target.value),
-                style: { width: '100%', marginBottom: '8px', fontSize: '13px', padding: '6px' }
-            },
-                React.createElement('option', { value: 'all' }, 'Type: All'),
-                React.createElement('option', { value: 'Attack' }, 'Type: Attack'),
-                React.createElement('option', { value: 'Skill' }, 'Type: Skill'),
-                React.createElement('option', { value: 'Power' }, 'Type: Power')
-            ),
-
-            // Rarity filter dropdown
-            React.createElement('select', {
-                className: 'filter-select',
-                value: filterRarity,
-                onChange: (e) => onFilterRarityChange(e.target.value),
-                style: { width: '100%', fontSize: '13px', padding: '6px' }
-            },
-                React.createElement('option', { value: 'all' }, 'Rarity: All'),
-                React.createElement('option', { value: 'Common' }, 'Rarity: Common'),
-                React.createElement('option', { value: 'Uncommon' }, 'Rarity: Uncommon'),
-                React.createElement('option', { value: 'Rare' }, 'Rarity: Rare')
-            )
+            // Search + Type/Rarity/Cost palette — shared with the Chart sidebar
+            // so the two views can't drift apart.
+            React.createElement(window.SearchFilterBlock, {
+                searchTerm,
+                onSearchChange,
+                filterTypes,
+                filterRarities,
+                filterCosts,
+                onToggleType,
+                onToggleRarity,
+                onToggleCost
+            })
         ),
 
         // Card list

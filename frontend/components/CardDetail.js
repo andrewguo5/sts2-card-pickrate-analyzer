@@ -1,5 +1,12 @@
 // CardDetail - Main panel displaying card statistics with tabs for different analyses
-const CardDetail = ({ selectedCard, chartData, skipRateData, winRateData, baselineSkipData, baselineWinrate, activeTab, setActiveTab, showTrend }) => {
+const CardDetail = ({ selectedCard, chartData, skipRateData, winRateData, baselineSkipData, baselineWinrate, activeTab, setActiveTab, showTrend, onBack }) => {
+    // Mobile-only control that slides the master-detail track back to the list.
+    // CSS-hidden on desktop, so it's safe to always render.
+    const backButton = React.createElement('button', {
+        className: 'mobile-back-button',
+        onClick: onBack
+    }, '← Cards');
+
     if (!selectedCard) {
         return React.createElement('div', { className: 'empty-state' },
             React.createElement('div', { className: 'empty-state-icon' }, '📊'),
@@ -8,6 +15,8 @@ const CardDetail = ({ selectedCard, chartData, skipRateData, winRateData, baseli
     }
 
     return React.createElement(React.Fragment, null,
+        backButton,
+
         // Card title
         React.createElement('h2', { className: 'card-title' }, selectedCard.name),
 

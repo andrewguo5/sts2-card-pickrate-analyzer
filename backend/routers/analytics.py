@@ -15,6 +15,7 @@ from schemas import AnalyticsComputeRequest, AnalyticsComputeResponse, Analytics
 from analytics_engine import compute_pickrates
 from card_metadata import get_card_metadata
 from card_coordinates import compute_all_card_coordinates
+from patch_taxonomy import build_patch_tree
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
@@ -119,6 +120,7 @@ def enrich_with_metadata(analytics_data: dict) -> dict:
                 card_data["summary"]["type"] = metadata["type"]
                 card_data["summary"]["rarity"] = metadata["rarity"]
                 card_data["summary"]["cost"] = metadata["cost"]
+                card_data["summary"]["is_x_cost"] = metadata.get("is_x_cost", False)
         else:
             missing_metadata.append(card_id)
 
@@ -153,10 +155,17 @@ def parse_mode_filter(mode: str):
 
 
 def apply_version_filter(query, version: str):
-    """Narrow a run query to a single game version, unless version is 'all'."""
-    if version != "all":
-        query = query.filter(Run.game_version == version)
-    return query
+    """Narrow a run query to the selected game version(s), unless 'all'.
+
+    ``version`` is a single query-param string that carries a set as a
+    comma-joined list (e.g. ``"v0.108.0,v0.107.1"``); a lone version
+    (``"v0.108.0"``) and the ``"all"`` sentinel are the degenerate cases. The
+    multi-select patch tree pools patches, so filtering is set membership.
+    """
+    if version == "all":
+        return query
+    versions = [v for v in version.split(",") if v]
+    return query.filter(Run.game_version.in_(versions))
 
 
 def filter_runs(db: Session, user_id: Optional[int], character: str, mode: str, ascension: str, version: str = "all"):
@@ -498,21 +507,19 @@ def get_users_list(db: Session = Depends(get_db)):
 @router.get("/distinct-versions")
 def get_distinct_versions(db: Session = Depends(get_db)):
     """
-    Get the distinct game versions present across all runs, newest first.
+    Get the patch taxonomy as an ordered tree, newest release first.
 
-    Powers the patch filter. The frontend prepends an "All Patches" ('all')
-    option; this endpoint returns only the concrete versions that have data.
+    Powers the patch filter. The order and parent/child structure come from the
+    hand-curated ``patch_taxonomy.py`` (release relationships are not derivable
+    from the version string), so this replaces the old lexical string sort that
+    mis-ordered versions like ``v0.99.1`` ahead of ``v0.108.0``.
 
     Returns:
-        List of version strings (e.g., ["v0.98.3", "v0.98.2"]) sorted descending.
-    """
-    rows = db.query(Run.game_version).filter(
-        Run.game_version.isnot(None)
-    ).distinct().all()
+        A newest-first list of nodes, each::
 
-    # rows are 1-tuples; sort descending so the newest patch leads the list.
-    versions = sorted((row[0] for row in rows), reverse=True)
-    return versions
+            {"version": str, "tag": str, "children": [ {"version", "tag"}, ... ]}
+    """
+    return build_patch_tree()
 
 
 @router.get("/users/filtered-counts")
@@ -774,7 +781,8 @@ def build_coordinate_map(pickrate_data: dict) -> dict:
             'name': card_summary.get('name'),
             'type': card_summary.get('type'),
             'rarity': card_summary.get('rarity'),
-            'cost': card_summary.get('cost')
+            'cost': card_summary.get('cost'),
+            'is_x_cost': card_summary.get('is_x_cost', False)
         }
 
     return result
