@@ -35,7 +35,16 @@ day, remove it first — see Cleanup — so you start from current `qa`.)
 
 ### 2. Hand off to the human for the edit
 
-The agent **waits** for the human to edit `backend/patch_taxonomy.py`. The
+Before the human edits anything, the agent **reminds them to switch to the
+worktree** and gives them the exact command. The taxonomy must be edited in the
+worktree, **not** the shared `qa` tree — an edit in the wrong tree either gets
+committed under the wrong branch or swept into another agent's work.
+
+```bash
+cd ../wt-patch-release      # edit backend/patch_taxonomy.py HERE, not in the qa tree
+```
+
+The agent then **waits** for the human to edit `backend/patch_taxonomy.py`. The
 human signals completion by saying **"done"**. The agent does not poll or guess.
 
 **How to edit the taxonomy** (full rules live in the file's own docstring):
