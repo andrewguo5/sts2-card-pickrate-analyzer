@@ -71,6 +71,7 @@ PATCHES = [
     ]),
     ("v0.108.0",  "Beta Patch"),
     ("v0.109.0",  "Beta Patch"),
+    ("v0.109.1",  "Beta Hotfix"),
 ]
 
 
