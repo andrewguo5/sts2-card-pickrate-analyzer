@@ -56,6 +56,55 @@
             return offered > 0 ? skipped / offered : 0;
         }
 
+        // Ranking score for a rate, as the lower bound of its Wilson score
+        // interval. Sorting on the raw ratio lets a card picked 1-of-1 outrank
+        // one picked 400-of-600, because a raw ratio says nothing about how much
+        // evidence backs it. The Wilson bound is the rate we can be confident the
+        // card is *at least* as good as, so thin samples are pulled toward zero
+        // in proportion to how thin they are and settle onto the raw rate as
+        // evidence accumulates. This only orders the list — the UI still displays
+        // the raw percentage.
+        //
+        // Cards are ranked against each other rather than tested against a fixed
+        // bar, so this deliberately has no minimum-sample cutoff: a low-sample
+        // card sinks smoothly instead of falling off a threshold cliff.
+        const WILSON_Z = 1.96;  // 95% confidence
+
+        function wilsonLowerBound(successes, trials) {
+            if (!trials || trials <= 0) return 0;
+
+            const observedRate = successes / trials;
+            const zSquaredOverN = (WILSON_Z * WILSON_Z) / trials;
+            const center = observedRate + zSquaredOverN / 2;
+            const margin = WILSON_Z * Math.sqrt(
+                (observedRate * (1 - observedRate) + zSquaredOverN / 4) / trials
+            );
+
+            return (center - margin) / (1 + zSquaredOverN);
+        }
+
+        // Confidence-adjusted ranking scores for the three rate sorts. Each pairs
+        // the displayed rate with the sample it was measured over.
+        //
+        // Skip rate is inverted: the sort is "least skipped first", so ranking on
+        // the Wilson bound of *not* being skipped keeps thin samples at the
+        // pessimistic end for that sort too, rather than handing an unproven card
+        // the top slot.
+        function pickRateScore(card) {
+            return wilsonLowerBound(card.total_picked || 0, card.total_offered || 0);
+        }
+
+        function winRateScore(card) {
+            const overall = card.winrate_data?.overall || {};
+            return wilsonLowerBound(overall.won || 0, overall.picked || 0);
+        }
+
+        function keptRateScore(card) {
+            const offered = Object.values(card.skip_data || {}).reduce((sum, d) => sum + (d.offered || 0), 0);
+            const skipped = Object.values(card.skip_data || {}).reduce((sum, d) => sum + (d.skipped || 0), 0);
+            return wilsonLowerBound(offered - skipped, offered);
+        }
+
         // Given a flattened card and the active detail tab, return the stat the
         // sidebar badge (and its trend arrow) should display for that tab.
         function resolveTabStat(card, activeTab) {
@@ -514,18 +563,15 @@
                     if (sortBy === 'offered') {
                         return b.total_offered - a.total_offered;
                     } else if (sortBy === 'pickrate') {
-                        return b.overall_pickrate - a.overall_pickrate;
+                        // Rate sorts rank on the Wilson lower bound, not the raw
+                        // ratio, so a card offered once can't top the list.
+                        return pickRateScore(b) - pickRateScore(a);
                     } else if (sortBy === 'winrate') {
-                        // Sort by overall win rate (highest first)
-                        const aWinRate = a.winrates_by_act?.overall || 0;
-                        const bWinRate = b.winrates_by_act?.overall || 0;
-                        return bWinRate - aWinRate;
+                        return winRateScore(b) - winRateScore(a);
                     } else if (sortBy === 'skiprate') {
-                        // Sort by skip rate (least skipped first = lowest skip rate first).
-                        // Cards with no offers sort last (treated as fully skipped).
-                        const aSkipRate = a.skip_data && Object.keys(a.skip_data).length ? overallSkipRate(a) : 1;
-                        const bSkipRate = b.skip_data && Object.keys(b.skip_data).length ? overallSkipRate(b) : 1;
-                        return aSkipRate - bSkipRate; // Ascending order (least skipped first)
+                        // Least skipped first — descending on the confidence-
+                        // adjusted rate of being kept.
+                        return keptRateScore(b) - keptRateScore(a);
                     } else if (sortBy === 'alphabetical') {
                         return a.name.localeCompare(b.name);
                     }
@@ -535,15 +581,18 @@
                 return cards;
             }, [data, searchTerm, sortBy, filterTypes, filterRarities, filterCosts]);
 
-            // Default selection on first load: pick the top card by overall pick rate
-            // so the detail panel isn't empty when the page opens. Only applies when
-            // nothing is selected yet (e.g. fresh load or after filters cleared it),
-            // so it never overrides a card the user clicked.
+            // Default selection on first load: pick the best-established card by
+            // pick rate so the detail panel isn't empty when the page opens. Uses
+            // the same confidence-adjusted score as the sort, so the landing card
+            // is one with real evidence behind it rather than whichever card
+            // happened to be picked the only time it was offered. Only applies
+            // when nothing is selected yet (e.g. fresh load or after filters
+            // cleared it), so it never overrides a card the user clicked.
             useEffect(() => {
                 if (!data || selectedCard || sortedCards.length === 0) return;
 
                 const topByPickRate = sortedCards.reduce((best, card) =>
-                    (card.overall_pickrate || 0) > (best.overall_pickrate || 0) ? card : best
+                    pickRateScore(card) > pickRateScore(best) ? card : best
                 );
                 setSelectedCard(topByPickRate);
             }, [data, selectedCard, sortedCards]);

@@ -6,7 +6,7 @@ Refactored from card_pickrate_analysis.py to work with database data instead of 
 from collections import defaultdict
 from typing import List, Dict, Any, Optional
 from compression import decompress_run_data
-from card_metadata import get_card_metadata
+from card_metadata import get_card_metadata, is_metadata_loaded
 
 
 class CardPickRateAnalyzer:
@@ -77,6 +77,28 @@ class CardPickRateAnalyzer:
 
         self.runs_processed = 0
 
+    def should_count_card(self, card_id: str) -> bool:
+        """Decide whether a card seen in run history belongs in this bucket's stats.
+
+        Rejects two kinds of card. First, cards Spire Codex has no metadata for:
+        the Codex covers every card currently in the game, so an unknown ID is a
+        card a patch has since removed. Old runs still carry it, and without
+        metadata it would render as a raw ALL-CAPS ID with no type, rarity or
+        cost to filter on. Second, cards belonging to another character's color,
+        when a character filter is active.
+        """
+        metadata = get_card_metadata(card_id)
+        if metadata is None:
+            # Fail open when the Codex fetch failed at startup: with an empty
+            # cache every card looks removed, and dropping all of them would
+            # turn a Codex outage into empty analytics.
+            return not is_metadata_loaded()
+
+        if self.character_color and metadata.get('color') != self.character_color:
+            return False
+
+        return True
+
     def extract_card_choices(self, run_data: Dict[str, Any]):
         """
         Extract all card choices from a run's map_point_history.
@@ -138,11 +160,9 @@ class CardPickRateAnalyzer:
                     if not card_id:
                         continue
 
-                    # Filter out cross-class cards if character filter is enabled
-                    if self.character_color:
-                        metadata = get_card_metadata(card_id)
-                        if metadata and metadata.get('color') != self.character_color:
-                            continue
+                    # Drop removed cards and, when filtering, other classes' cards
+                    if not self.should_count_card(card_id):
+                        continue
 
                     # Track pick rate data (exclude shops)
                     if not is_shop:
@@ -183,11 +203,9 @@ class CardPickRateAnalyzer:
                 if not card_id:
                     continue
 
-                # Filter out cross-class cards if character filter is enabled
-                if self.character_color:
-                    metadata = get_card_metadata(card_id)
-                    if metadata and metadata.get('color') != self.character_color:
-                        continue
+                # Drop removed cards and, when filtering, other classes' cards
+                if not self.should_count_card(card_id):
+                    continue
 
                 # Track for overall win rate
                 cards_in_deck_this_run.add(card_id)

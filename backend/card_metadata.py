@@ -88,6 +88,17 @@ def get_card_metadata(card_id: str) -> Optional[dict]:
     return CARD_METADATA_CACHE.get(card_id)
 
 
+def is_metadata_loaded() -> bool:
+    """Report whether the Codex cache actually populated on startup.
+
+    load_card_metadata() logs and swallows request failures so a Codex outage
+    can't stop the backend booting, which leaves the cache empty. Callers that
+    treat "no metadata for this card" as a meaningful signal must first confirm
+    there is metadata at all, or an outage reads as "every card was removed".
+    """
+    return bool(CARD_METADATA_CACHE)
+
+
 def get_all_card_metadata() -> Dict[str, dict]:
     """
     Get all cached card metadata.
